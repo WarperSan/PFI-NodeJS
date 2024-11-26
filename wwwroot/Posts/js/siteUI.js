@@ -319,7 +319,7 @@ function attach_Posts_UI_Events_Callback() {
 function addWaitingGif() {
     clearTimeout(waiting);
     waiting = setTimeout(() => {
-        postsPanel.itemsPanel.append($("<div id='waitingGif' class='waitingGifcontainer'><img class='waitingGif' src='Loading_icon.gif' /></div>'"));
+        postsPanel.itemsPanel.append($("<div id='waitingGif' class='waitingGifcontainer'><img class='waitingGif' src='Posts/Loading_icon.gif' /></div>'"));
     }, waitingGifTrigger)
 }
 function removeWaitingGif() {
@@ -435,7 +435,7 @@ function newPost() {
     Post.Id = 0;
     Post.Title = "";
     Post.Text = "";
-    Post.Image = "news-logo-upload.png";
+    Post.Image = "Posts/news-logo-upload.png";
     Post.Category = "";
     return Post;
 }
