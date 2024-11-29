@@ -289,37 +289,48 @@ function renderUserForm(user = null) {
                 <input class="form-control" name="EmailVerify" id="${SIGNUP_EMAIL_VERIFY_ID.substring(1)}" placeholder="Vérification" required="" value="${user.Email}" type="text">
             </fieldset>
             
-            ${oldPasswordField}
-            <input class="form-control" name="Password" id="${SIGNUP_PASSWORD_ID.substring(1)}" placeholder="Mot de passe" required="" value="" type="password">
-            <input class="form-control" name="PasswordVerify" id="${SIGNUP_PASSWORD_VERIFY_ID.substring(1)}" placeholder="Vérification" required="" value="" type="password">
-
-            <input class="form-control" name="Name" id="${SIGNUP_NAME_ID.substring(1)}" placeholder="Nom" required="" value="" type="text">
+            <fieldset class="form-control">
+                <legend>Mot de passe</legend>
             
-            <div class='imageUploaderContainer'>
-                <div class='imageUploader' 
-                     newImage='${create}' 
-                     controlId='Image' 
-                     imageSrc='${user.Avatar}' 
-                     waitingImage="Loading_icon.gif">
+                ${oldPasswordField}
+                
+                <input class="form-control" name="Password" id="${SIGNUP_PASSWORD_ID.substring(1)}" placeholder="Mot de passe" required="" value="" type="password">
+                <input class="form-control" name="PasswordVerify" id="${SIGNUP_PASSWORD_VERIFY_ID.substring(1)}" placeholder="Vérification" required="" value="" type="password">
+
+            </fieldset>
+            
+            <fieldset class="form-control">
+                <legend>Nom</legend>
+                <input class="form-control" name="Name" id="${SIGNUP_NAME_ID.substring(1)}" placeholder="Nom" required="" value="" type="text">
+            </fieldset>
+            
+            <fieldset class="form-control">
+                <legend>Avatar</legend>
+                
+                <div class='imageUploaderContainer'>
+                    <div class='imageUploader' 
+                        newImage='${create}' 
+                        controlId='Image' 
+                        imageSrc='${user.Avatar}' 
+                        waitingImage="Loading_icon.gif">
+                    </div>
                 </div>
-            </div>
+            </fieldset>
             
             <input type="submit" value="Enregistrer">
         </form>
-        
-        <hr>
     `));
 
     if(create)
     {
-        form.append($(`<button id="${USER_FORM_CANCEL_BUTTON_ID.substring(1)}">Annuler</button>`));
+        form.append($(`<div><button id="${USER_FORM_CANCEL_BUTTON_ID.substring(1)}">Annuler</button></div>`));
         form.find(USER_FORM_CANCEL_BUTTON_ID).on("click", function () {
             console.log("CANCEL");
         });
     }
     else
     {
-        form.append($(`<button id="${USER_FORM_DELETE_BUTTON_ID.substring(1)}">Effacer le compte</button>`));
+        form.append($(`<div><button id="${USER_FORM_DELETE_BUTTON_ID.substring(1)}">Effacer le compte</button></div>`));
         form.find(USER_FORM_DELETE_BUTTON_ID).on("click", function () {
             console.log("DELETE");
         });

@@ -1,11 +1,65 @@
 #userFormContainer {
+    height: 100%;
+    width: 100%;
+
+    overflow-x: clip;
+    overflow-y: scroll;
+
+    padding-top: 1em;
+    padding-bottom: 1em;
+}
+
+#userFormContainer > * {
+    width: 95%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#userForm {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+
+    margin-top: 1em;
+}
+
+#userForm fieldset {
     display: flex;
     flex-direction: column;
 
-    margin: 2em auto;
-    width: 90%;
+    padding: 1em;
 }
 
 #userForm legend {
     font-size: 1em;
+}
+
+#userForm fieldset input:not(:last-child) {
+    margin-bottom: 0.5em;
+}
+
+#userForm input[type='submit'],
+* > #userCancelButton,
+* > #userDeleteButton {
+    width: 100%;
+    padding: 0.5em;
+    margin-top: 1em;
+
+    border: none;
+    border-radius: 0.3em;
+}
+
+#userForm input[type='submit'] {
+    color: white;
+    background-color: #0D6EFD;
+}
+
+#userCancelButton {
+    color: white;
+    background-color: #6D757D;
+}
+
+#userDeleteButton {
+    color: black;
+    background-color: #FABE2C;
 }
