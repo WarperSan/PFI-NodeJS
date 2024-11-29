@@ -1,11 +1,14 @@
-
 class Posts_API {
-    static API_URL() { return "http://localhost:5000/api/posts" };
+    static API_URL() {
+        return "http://localhost:5000/api/posts"
+    };
+
     static initHttpState() {
         this.currentHttpError = "";
         this.currentStatus = 0;
         this.error = false;
     }
+
     static setHttpErrorState(xhr) {
         if (xhr.responseJSON)
             this.currentHttpError = xhr.responseJSON.error_description;
@@ -14,6 +17,7 @@ class Posts_API {
         this.currentStatus = xhr.status;
         this.error = true;
     }
+
     static async HEAD() {
         Posts_API.initHttpState();
         return new Promise(resolve => {
@@ -21,35 +25,49 @@ class Posts_API {
                 url: this.API_URL(),
                 type: 'HEAD',
                 contentType: 'text/plain',
-                complete: data => { resolve(data.getResponseHeader('ETag')); },
-                error: (xhr) => { Posts_API.setHttpErrorState(xhr); resolve(null); }
+                complete: data => {
+                    resolve(data.getResponseHeader('ETag'));
+                },
+                error: (xhr) => {
+                    Posts_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
             });
         });
     }
+
     static async Get(id = null) {
         Posts_API.initHttpState();
         return new Promise(resolve => {
             $.ajax({
                 url: this.API_URL() + (id != null ? "/" + id : ""),
-                complete: data => { resolve({ ETag: data.getResponseHeader('ETag'), data: data.responseJSON }); },
-                error: (xhr) => { Posts_API.setHttpErrorState(xhr); resolve(null); }
+                complete: data => {
+                    resolve({ETag: data.getResponseHeader('ETag'), data: data.responseJSON});
+                },
+                error: (xhr) => {
+                    Posts_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
             });
         });
     }
+
     static async GetQuery(queryString = "") {
         Posts_API.initHttpState();
         return new Promise(resolve => {
             $.ajax({
                 url: this.API_URL() + queryString,
                 complete: data => {
-                    resolve({ ETag: data.getResponseHeader('ETag'), data: data.responseJSON });
+                    resolve({ETag: data.getResponseHeader('ETag'), data: data.responseJSON});
                 },
                 error: (xhr) => {
-                    Posts_API.setHttpErrorState(xhr); resolve(null);
+                    Posts_API.setHttpErrorState(xhr);
+                    resolve(null);
                 }
             });
         });
     }
+
     static async Save(data, create = true) {
         Posts_API.initHttpState();
         return new Promise(resolve => {
@@ -58,11 +76,17 @@ class Posts_API {
                 type: create ? "POST" : "PUT",
                 contentType: 'application/json',
                 data: JSON.stringify(data),
-                success: (data) => { resolve(data); },
-                error: (xhr) => { Posts_API.setHttpErrorState(xhr); resolve(null); }
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Posts_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
             });
         });
     }
+
     static async Delete(id) {
         return new Promise(resolve => {
             $.ajax({
@@ -73,7 +97,27 @@ class Posts_API {
                     resolve(true);
                 },
                 error: (xhr) => {
-                    Posts_API.setHttpErrorState(xhr); resolve(null);
+                    Posts_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    /// ==== USERS ====
+    static async Login(credentials) {
+        return new Promise(resolve => {
+            $.ajax({
+                url: "http://localhost:5000/token",
+                type: "POST",
+                contentType: 'application/json',
+                data: JSON.stringify(credentials),
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Posts_API.setHttpErrorState(xhr);
+                    resolve(null);
                 }
             });
         });
