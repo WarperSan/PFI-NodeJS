@@ -303,7 +303,7 @@ function renderUserForm(user = null) {
                 <div class='imageUploaderContainer'>
                     <div class='imageUploader' 
                         newImage='${create}' 
-                        controlId='Image' 
+                        controlId='Avatar' 
                         imageSrc='${user.Avatar}' 
                         waitingImage="Loading_icon.gif">
                     </div>

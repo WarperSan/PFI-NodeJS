@@ -10,20 +10,21 @@ export default class AccountsController extends Controller {
     constructor(HttpContext) {
         super(HttpContext, new Repository(new UserModel()), AccessControl.admin());
     }
+
     index(id) {
         if (id != '') {
             if (AccessControl.readGranted(this.HttpContext.authorizations, AccessControl.admin()))
                 this.HttpContext.response.JSON(this.repository.get(id));
             else
                 this.HttpContext.response.unAuthorized("Unauthorized access");
-        }
-        else {
+        } else {
             if (AccessControl.granted(this.HttpContext.authorizations, AccessControl.admin()))
                 this.HttpContext.response.JSON(this.repository.getAll(this.HttpContext.path.params), this.repository.ETag, false, AccessControl.admin());
             else
                 this.HttpContext.response.unAuthorized("Unauthorized access");
         }
     }
+
     // POST: /token body payload[{"Email": "...", "Password": "..."}]
     login(loginInfo) {
         if (loginInfo) {
@@ -44,6 +45,7 @@ export default class AccountsController extends Controller {
         } else
             this.HttpContext.response.badRequest("Credential Email and password are missing.");
     }
+
     logout() {
         let userId = this.HttpContext.path.params.userId;
         if (userId) {
@@ -53,6 +55,7 @@ export default class AccountsController extends Controller {
             this.HttpContext.response.badRequest("UserId is not specified.")
         }
     }
+
     sendVerificationEmail(user) {
         // bypass model bindeExtraData wich hide the user verifyCode
         let html = `
@@ -100,18 +103,36 @@ export default class AccountsController extends Controller {
         } else
             this.HttpContext.response.notImplemented();
     }
+
     //GET : /accounts/conflict?Id=...&Email=.....
     conflict() {
         if (this.repository != null) {
             let id = this.HttpContext.path.params.Id;
             let email = this.HttpContext.path.params.Email;
             if (id && email) {
-                let prototype = { Id: id, Email: email };
+                let prototype = {Id: id, Email: email};
                 this.HttpContext.response.JSON(this.repository.checkConflict(prototype));
             } else
                 this.HttpContext.response.JSON(false);
         } else
             this.HttpContext.response.JSON(false);
+    }
+
+    // GET: /accounts/exists?Email=...
+    exists() {
+        if (this.repository == null) {
+            this.HttpContext.response.JSON(false);
+            return;
+        }
+
+        let email = this.HttpContext.path.params.Email;
+        if (!email) {
+            this.HttpContext.response.badRequest("No email was provided.");
+            return;
+        }
+
+        let elements = this.repository.findByFilter((e) => e.Email === email);
+        this.HttpContext.response.JSON(elements.length > 0);
     }
 
     // POST: account/register body payload[{"Id": 0, "Name": "...", "Email": "...", "Password": "..."}]
@@ -123,8 +144,9 @@ export default class AccountsController extends Controller {
             user.Authorizations = AccessControl.user();
             let newUser = this.repository.add(user);
             if (this.repository.model.state.isValid) {
-                this.HttpContext.response.created(newUser);
-                newUser.Verifycode = verifyCode;
+
+                this.HttpContext.response.created(true);
+
                 this.sendVerificationEmail(newUser);
             } else {
                 if (this.repository.model.state.inConflict)
@@ -135,6 +157,7 @@ export default class AccountsController extends Controller {
         } else
             this.HttpContext.response.notImplemented();
     }
+
     promote(user) {
         if (this.repository != null) {
             let foundUser = this.repository.findByField("Id", user.Id);
@@ -146,12 +169,12 @@ export default class AccountsController extends Controller {
             if (this.repository.model.state.isValid) {
                 let userFound = this.repository.get(foundUser.Id); // get data binded record
                 this.HttpContext.response.JSON(userFound);
-            }
-            else
+            } else
                 this.HttpContext.response.badRequest(this.repository.model.state.errors);
         } else
             this.HttpContext.response.notImplemented();
     }
+
     block(user) {
         if (this.repository != null) {
             let foundUser = this.repository.findByField("Id", user.Id);
@@ -161,12 +184,12 @@ export default class AccountsController extends Controller {
             if (this.repository.model.state.isValid) {
                 userFound = this.repository.get(userFound.Id); // get data binded record
                 this.HttpContext.response.JSON(userFound);
-            }
-            else
+            } else
                 this.HttpContext.response.badRequest(this.repository.model.state.errors);
         } else
             this.HttpContext.response.notImplemented();
     }
+
     // PUT:account/modify body payload[{"Id": 0, "Name": "...", "Email": "...", "Password": "..."}]
     modify(user) {
         // empty asset members imply no change and there values will be taken from the stored record
@@ -191,8 +214,7 @@ export default class AccountsController extends Controller {
 
                     if (this.repository.model.state.isValid) {
                         this.HttpContext.response.JSON(updatedUser, this.repository.ETag);
-                    }
-                    else {
+                    } else {
                         if (this.repository.model.state.inConflict)
                             this.HttpContext.response.conflict(this.repository.model.state.errors);
                         else

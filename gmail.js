@@ -16,16 +16,17 @@ export default class Gmail {
         this.transporter = nodemailer.createTransport({
             host: GmailHost,
             port: GmailPort,
+            secure: false, // use SSL
             auth: {
                 user: GmailAccountEmail,
                 pass: GmailAccountPassword
             }
-        })
+        });
     }
 
     send(to, subject, html) {
         let from = GmailAccountEmail;
-        this.transporter.sendMail({ from, to, subject, html }, function (error, info) {
+        this.transporter.sendMail({ from: from, to: to, subject: subject, html: html }, function (error, info) {
             if (error)
                 console.log(error);
             else
