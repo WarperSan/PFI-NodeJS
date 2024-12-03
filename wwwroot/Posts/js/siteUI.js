@@ -2,7 +2,7 @@
 ////// 2024
 //////////////////////////////
 
-const periodicRefreshPeriod = 10;
+const periodicRefreshPeriod = 2;
 const waitingGifTrigger = 2000;
 const minKeywordLenth = 3;
 const keywordsOnchangeDelay = 500;
@@ -31,9 +31,11 @@ const SIGNUP_PASSWORD_VERIFY_ID = "#signupPasswordVerify"
 const SIGNUP_NAME_ID = "#signupName";
 const SIGNUP_AVATAR_ID = "#signupAvatar"
 
+
 let categories = [];
 let selectedCategory = "";
 let currentETag = "";
+let currentPostsCount = -1;
 let periodic_Refresh_paused = false;
 let postsPanel;
 let itemLayout;
@@ -42,7 +44,6 @@ let showKeywords = false;
 let keywordsOnchangeTimger = null;
 
 Init_UI();
-
 async function Init_UI() {
     postsPanel = new PageManager('postsScrollPanel', 'postsPanel', 'postSample', renderPosts);
     $('#createPost').on("click", async function () {
@@ -67,6 +68,7 @@ async function Init_UI() {
 /////////////////////////// Search keywords UI //////////////////////////////////////////////////////////
 
 function installKeywordsOnkeyupEvent() {
+
     $("#searchKeys").on('keyup', function () {
         clearTimeout(keywordsOnchangeTimger);
         keywordsOnchangeTimger = setTimeout(() => {
@@ -78,7 +80,6 @@ function installKeywordsOnkeyupEvent() {
         showPosts(true);
     });
 }
-
 function cleanSearchKeywords() {
     /* Keep only keywords of 3 characters or more */
     let keywords = $("#searchKeys").val().trim().split(' ');
@@ -88,28 +89,27 @@ function cleanSearchKeywords() {
     });
     $("#searchKeys").val(cleanedKeywords.trim());
 }
-
 function showSearchIcon() {
     $("#hiddenIcon").hide();
     $("#showSearch").show();
     if (showKeywords) {
         $("#searchKeys").show();
-    } else
+    }
+    else
         $("#searchKeys").hide();
 }
-
 function hideSearchIcon() {
     $("#hiddenIcon").show();
     $("#showSearch").hide();
     $("#searchKeys").hide();
 }
-
 function toogleShowKeywords() {
     showKeywords = !showKeywords;
     if (showKeywords) {
         $("#searchKeys").show();
         $("#searchKeys").focus();
-    } else {
+    }
+    else {
         $("#searchKeys").hide();
         showPosts(true);
     }
@@ -132,14 +132,12 @@ function intialView() {
     $(USER_FORM_CONTAINER_ID).hide();
     showSearchIcon();
 }
-
 async function showPosts(reset = false) {
     intialView();
     $("#viewTitle").text("Fil de nouvelles");
     periodic_Refresh_paused = false;
     await postsPanel.show(reset);
 }
-
 function hidePosts() {
     postsPanel.hide();
     hideSearchIcon();
@@ -147,14 +145,12 @@ function hidePosts() {
     $('#menu').hide();
     periodic_Refresh_paused = true;
 }
-
 function showForm() {
     hidePosts();
     $('#form').show();
     $('#commit').show();
     $('#abort').show();
 }
-
 function showError(message, details = "") {
     hidePosts();
     $('#form').hide();
@@ -175,19 +171,16 @@ function showCreatePostForm() {
     $("#viewTitle").text("Ajout de nouvelle");
     renderPostForm();
 }
-
 function showEditPostForm(id) {
     showForm();
     $("#viewTitle").text("Modification");
     renderEditPostForm(id);
 }
-
 function showDeletePostForm(id) {
     showForm();
     $("#viewTitle").text("Retrait");
     renderDeletePostForm(id);
 }
-
 function showAbout() {
     hidePosts();
     $("#hiddenIcon").show();
@@ -197,7 +190,7 @@ function showAbout() {
     $("#aboutContainer").show();
 }
 
-
+//////////////////////////// Login and sign up /////////////////////////////////////////////////////////////
 
 function showLogin() {
     hidePosts();
@@ -351,23 +344,35 @@ function newUser() {
 
     return User;
 }
-//////////////////////////// Posts rendering /////////////////////////////////////////////////////////////
 
 //////////////////////////// Posts rendering /////////////////////////////////////////////////////////////
 
 function start_Periodic_Refresh() {
+    $("#reloadPosts").addClass('white');
+    $("#reloadPosts").on('click', async function () {
+        $("#reloadPosts").addClass('white');
+        postsPanel.resetScrollPosition();
+        await showPosts();
+    })
     setInterval(async () => {
-            if (!periodic_Refresh_paused) {
-                let etag = await Posts_API.HEAD();
-                if (currentETag != etag) {
-                    currentETag = etag;
+        if (!periodic_Refresh_paused) {
+            let etag = await Posts_API.HEAD();
+            // the etag contain the number of model records in the following form
+            // xxx-etag
+            let postsCount = parseInt(etag.split("-")[0]);
+            if (currentETag != etag) {           
+                if (postsCount != currentPostsCount) {
+                    console.log("postsCount", postsCount)
+                    currentPostsCount = postsCount;
+                    $("#reloadPosts").removeClass('white');
+                } else
                     await showPosts();
-                }
+                currentETag = etag;
             }
-        },
+        }
+    },
         periodicRefreshPeriod * 1000);
 }
-
 async function renderPosts(queryString) {
     let endOfData = false;
     queryString += "&sort=date,desc";
@@ -382,10 +387,11 @@ async function renderPosts(queryString) {
     let response = await Posts_API.Get(queryString);
     if (!Posts_API.error) {
         currentETag = response.ETag;
+        currentPostsCount = parseInt(currentETag.split("-")[0]);
         let Posts = response.data;
         if (Posts.length > 0) {
             Posts.forEach(Post => {
-                postsPanel.itemsPanel.append(renderPost(Post));
+                postsPanel.append(renderPost(Post));
             });
         } else
             endOfData = true;
@@ -398,7 +404,6 @@ async function renderPosts(queryString) {
     removeWaitingGif();
     return endOfData;
 }
-
 function renderPost(post, loggedUser) {
     let date = convertToFrenchDate(UTC_To_Local(post.Date));
     let crudIcon =
@@ -426,7 +431,6 @@ function renderPost(post, loggedUser) {
         </div>
     `);
 }
-
 async function compileCategories() {
     categories = [];
     let response = await Posts_API.GetQuery("?fields=category&sort=category");
@@ -443,7 +447,6 @@ async function compileCategories() {
         }
     }
 }
-
 function updateDropDownMenu() {
     let DDMenu = $("#DDMenu");
     let selectClass = selectedCategory === "" ? "fa-check" : "fa-fw";
@@ -493,7 +496,6 @@ function updateDropDownMenu() {
         updateDropDownMenu();
     });
 }
-
 function attach_Posts_UI_Events_Callback() {
 
     linefeeds_to_Html_br(".postText");
@@ -506,7 +508,7 @@ function attach_Posts_UI_Events_Callback() {
     $(".deleteCmd").on("click", function () {
         showDeletePostForm($(this).attr("postId"));
     });
-
+    $(".moreText").off();
     $(".moreText").click(function () {
         $(`.commentsPanel[postId=${$(this).attr("postId")}]`).show();
         $(`.lessText[postId=${$(this).attr("postId")}]`).show();
@@ -514,22 +516,22 @@ function attach_Posts_UI_Events_Callback() {
         $(`.postTextContainer[postId=${$(this).attr("postId")}]`).addClass('showExtra');
         $(`.postTextContainer[postId=${$(this).attr("postId")}]`).removeClass('hideExtra');
     })
+    $(".lessText").off();
     $(".lessText").click(function () {
         $(`.commentsPanel[postId=${$(this).attr("postId")}]`).hide();
         $(`.moreText[postId=${$(this).attr("postId")}]`).show();
         $(this).hide();
+        postsPanel.scrollToElem($(this).attr("postId"));
         $(`.postTextContainer[postId=${$(this).attr("postId")}]`).addClass('hideExtra');
         $(`.postTextContainer[postId=${$(this).attr("postId")}]`).removeClass('showExtra');
     })
 }
-
 function addWaitingGif() {
     clearTimeout(waiting);
     waiting = setTimeout(() => {
-        postsPanel.itemsPanel.append($("<div id='waitingGif' class='waitingGifcontainer'><img class='waitingGif' src='Posts/Loading_icon.gif' /></div>'"));
+        postsPanel.itemsPanel.append($("<div id='waitingGif' class='waitingGifcontainer'><img class='waitingGif' src='Loading_icon.gif' /></div>'"));
     }, waitingGifTrigger)
 }
-
 function removeWaitingGif() {
     clearTimeout(waiting);
     $("#waitingGif").remove();
@@ -545,7 +547,6 @@ function linefeeds_to_Html_br(selector) {
         postText.html(str.replace(regex, "<br>"));
     })
 }
-
 function highlight(text, elem) {
     text = text.trim();
     if (text.length >= minKeywordLenth) {
@@ -566,7 +567,6 @@ function highlight(text, elem) {
         elem.innerHTML = innerHTML;
     }
 }
-
 function highlightKeywords() {
     if (showKeywords) {
         let keywords = $("#searchKeys").val().split(' ');
@@ -602,7 +602,6 @@ async function renderEditPostForm(id) {
     }
     removeWaitingGif();
 }
-
 async function renderDeletePostForm(id) {
     let response = await Posts_API.Get(id)
     if (!Posts_API.error) {
@@ -625,7 +624,8 @@ async function renderDeletePostForm(id) {
                 await Posts_API.Delete(post.Id);
                 if (!Posts_API.error) {
                     await showPosts();
-                } else {
+                }
+                else {
                     console.log(Posts_API.currentHttpError)
                     showError("Une erreur est survenue!");
                 }
@@ -640,17 +640,15 @@ async function renderDeletePostForm(id) {
     } else
         showError(Posts_API.currentHttpError);
 }
-
 function newPost() {
     let Post = {};
     Post.Id = 0;
     Post.Title = "";
     Post.Text = "";
-    Post.Image = "Posts/news-logo-upload.png";
+    Post.Image = "news-logo-upload.png";
     Post.Category = "";
     return Post;
 }
-
 function renderPostForm(post = null) {
     let create = post == null;
     if (create) post = newPost();
@@ -726,14 +724,14 @@ function renderPostForm(post = null) {
         if (!Posts_API.error) {
             await showPosts();
             postsPanel.scrollToElem(post.Id);
-        } else
+        }
+        else
             showError("Une erreur est survenue! ", Posts_API.currentHttpError);
     });
     $('#cancel').on("click", async function () {
         await showPosts();
     });
 }
-
 function getFormData($form) {
     // prevent html injections
     const removeTag = new RegExp("(<[a-zA-Z0-9]+>)|(</[a-zA-Z0-9]+>)", "g");
