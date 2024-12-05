@@ -16,7 +16,7 @@ export default class Gmail {
         this.transporter = nodemailer.createTransport({
             host: GmailHost,
             port: GmailPort,
-            secure: false, // use SSL
+            secure: true, // use SSL
             auth: {
                 user: GmailAccountEmail,
                 pass: GmailAccountPassword
