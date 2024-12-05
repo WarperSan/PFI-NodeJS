@@ -340,7 +340,7 @@ function newUser() {
     User.Name = "";
     User.Email = "";
     User.Password = "";
-    User.Avatar = "news-logo-upload.png";
+    User.Avatar = "no-avatar.png";
 
     return User;
 }
