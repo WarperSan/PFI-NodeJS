@@ -145,7 +145,7 @@ export default class AccountsController extends Controller {
             let newUser = this.repository.add(user);
             if (this.repository.model.state.isValid) {
 
-                this.HttpContext.response.created(true);
+                this.HttpContext.response.ok();
 
                 this.sendVerificationEmail(newUser);
             } else {
