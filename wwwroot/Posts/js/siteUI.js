@@ -256,7 +256,7 @@ function showLogin() {
 
     form.show();
 }
-function showCreateAccountForm(){
+function showCreateAccountForm() {
     hidePosts();
     $(LOGIN_CONTAINER_ID).hide();
     $("#viewTitle").text("Inscription");
@@ -315,8 +315,7 @@ function renderUserForm(user = null) {
     `));
 
 
-    if(create)
-    {
+    if (create) {
         form.append($(`<div><button id="${USER_FORM_CANCEL_BUTTON_ID.substring(1)}">Annuler</button></div>`));
 
         form.find(SIGNUP_EMAIL_ID).attr("CustomErrorMessage", "Ce courriel est déjà utilisé");
@@ -334,18 +333,46 @@ function renderUserForm(user = null) {
 
         form.find(USER_FORM_ID).on("submit", async function (event) {
             event.preventDefault();
-            let user = getFormData($(USER_FORM_ID));
+            let newUser = getFormData($(USER_FORM_ID));
 
-            delete user.EmailVerify;
-            delete user.PasswordVerify;
+            delete newUser.EmailVerify;
+            delete newUser.PasswordVerify;
 
-            user = await Users_API.Register(user);
+            newUser = await Users_API.Register(newUser);
 
-            if (user === null)
-            {
+            if (newUser === null) {
                 showError("Une erreur est survenue!");
                 return;
             }
+
+            // If form is valid, show pop up for verification code
+            $('#verificationModal').modal('show');
+
+            // 
+            $('#confirmCode').on('click', async function () {
+                // let inputCode = $('#verificationCode').val();
+                
+                // let user = await Users_API.VerifyCode(id, inputCode);
+
+                // if (!user) {
+                //     showError("Une erreur est survenue!");
+                //     return;
+                // }
+
+                // if (parseInt(inputCode) === user.VerifyCode) {
+                //     alert("Vérification réussie !");
+                //     $('#verificationModal').modal('hide');
+                // } else {
+                //     alert("Code de vérification incorrect !");
+                // }
+            })
+
+            // Returns to login page when clicked
+            $('#returnToLogin').on('click', function () {
+                $('#verificationModal').modal('hide');
+                form.hide();
+                showLogin();
+            })
 
             // Login
             console.log("Login with:");
@@ -353,11 +380,11 @@ function renderUserForm(user = null) {
         })
 
         form.find(USER_FORM_CANCEL_BUTTON_ID).on("click", function () {
-            console.log("CANCEL");
+            form.hide();
+            showLogin();
         });
     }
-    else
-    {
+    else {
         form.append($(`<div><button id="${USER_FORM_DELETE_BUTTON_ID.substring(1)}">Effacer le compte</button></div>`));
         form.find(USER_FORM_DELETE_BUTTON_ID).on("click", function () {
             console.log("DELETE");
@@ -390,22 +417,22 @@ function start_Periodic_Refresh() {
         await showPosts();
     })
     setInterval(async () => {
-            if (!periodic_Refresh_paused) {
-                let etag = await Posts_API.HEAD();
-                // the etag contain the number of model records in the following form
-                // xxx-etag
-                let postsCount = parseInt(etag.split("-")[0]);
-                if (currentETag != etag) {
-                    if (postsCount != currentPostsCount) {
-                        console.log("postsCount", postsCount)
-                        currentPostsCount = postsCount;
-                        $("#reloadPosts").removeClass('white');
-                    } else
-                        await showPosts();
-                    currentETag = etag;
-                }
+        if (!periodic_Refresh_paused) {
+            let etag = await Posts_API.HEAD();
+            // the etag contain the number of model records in the following form
+            // xxx-etag
+            let postsCount = parseInt(etag.split("-")[0]);
+            if (currentETag != etag) {
+                if (postsCount != currentPostsCount) {
+                    console.log("postsCount", postsCount)
+                    currentPostsCount = postsCount;
+                    $("#reloadPosts").removeClass('white');
+                } else
+                    await showPosts();
+                currentETag = etag;
             }
-        },
+        }
+    },
         periodicRefreshPeriod * 1000);
 }
 async function renderPosts(queryString) {

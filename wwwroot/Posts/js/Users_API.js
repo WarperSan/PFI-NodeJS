@@ -42,4 +42,19 @@ class Users_API {
             });
         });
     }
+
+    static async VerifyCode(id, code) {
+        Users_API.initHttpState();
+        return new Promise(resolve => {
+            $.ajax({
+                url: `${this.Host_URL()}/accounts/verify?id=${id}&code=${code}`,
+                type: "GET",
+                success: (data) => { resolve(data); },
+                error: (xhr) => { 
+                    Users_API.setHttpErrorState(xhr); 
+                    resolve(null); 
+                }
+            });
+        });
+    }
 }
