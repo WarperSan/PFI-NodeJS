@@ -310,13 +310,48 @@ function renderUserForm(user = null) {
                 </div>
             </fieldset>
             
-            <input type="submit" value="Enregistrer">
+            <input type="submit" value="Enregistrer" id="saveUser">
         </form>
     `));
+
 
     if(create)
     {
         form.append($(`<div><button id="${USER_FORM_CANCEL_BUTTON_ID.substring(1)}">Annuler</button></div>`));
+
+        form.find(SIGNUP_EMAIL_ID).attr("CustomErrorMessage", "Ce courriel est déjà utilisé");
+        form.find(SIGNUP_EMAIL_ID).blur(async function (event) {
+            // Find all emails
+            let exists = await Users_API.EmailExists($(this).val());
+
+            // Check if email already exist
+            if (!exists)
+                return;
+
+            event.target.setCustomValidity("Ce courriel est déjà utilisé");
+            event.target.reportValidity();
+        });
+
+        form.find(USER_FORM_ID).on("submit", async function (event) {
+            event.preventDefault();
+            let user = getFormData($(USER_FORM_ID));
+
+            delete user.EmailVerify;
+            delete user.PasswordVerify;
+
+            user = await Users_API.Register(user);
+
+            if (user === null)
+            {
+                showError("Une erreur est survenue!");
+                return;
+            }
+
+            // Login
+            console.log("Login with:");
+            console.log(user);
+        })
+
         form.find(USER_FORM_CANCEL_BUTTON_ID).on("click", function () {
             console.log("CANCEL");
         });
@@ -355,22 +390,22 @@ function start_Periodic_Refresh() {
         await showPosts();
     })
     setInterval(async () => {
-        if (!periodic_Refresh_paused) {
-            let etag = await Posts_API.HEAD();
-            // the etag contain the number of model records in the following form
-            // xxx-etag
-            let postsCount = parseInt(etag.split("-")[0]);
-            if (currentETag != etag) {           
-                if (postsCount != currentPostsCount) {
-                    console.log("postsCount", postsCount)
-                    currentPostsCount = postsCount;
-                    $("#reloadPosts").removeClass('white');
-                } else
-                    await showPosts();
-                currentETag = etag;
+            if (!periodic_Refresh_paused) {
+                let etag = await Posts_API.HEAD();
+                // the etag contain the number of model records in the following form
+                // xxx-etag
+                let postsCount = parseInt(etag.split("-")[0]);
+                if (currentETag != etag) {
+                    if (postsCount != currentPostsCount) {
+                        console.log("postsCount", postsCount)
+                        currentPostsCount = postsCount;
+                        $("#reloadPosts").removeClass('white');
+                    } else
+                        await showPosts();
+                    currentETag = etag;
+                }
             }
-        }
-    },
+        },
         periodicRefreshPeriod * 1000);
 }
 async function renderPosts(queryString) {
