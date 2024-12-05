@@ -5,6 +5,7 @@ import * as utilities from "../utilities.js";
 import Gmail from "../gmail.js";
 import Controller from './Controller.js';
 import AccessControl from '../accessControl.js';
+import {log} from "../log.js";
 
 export default class AccountsController extends Controller {
     constructor(HttpContext) {
@@ -27,23 +28,45 @@ export default class AccountsController extends Controller {
 
     // POST: /token body payload[{"Email": "...", "Password": "..."}]
     login(loginInfo) {
-        if (loginInfo) {
-            if (this.repository != null) {
-                let user = this.repository.findByField("Email", loginInfo.Email);
-                if (user != null) {
-                    if (user.Password == loginInfo.Password) {
-                        user = this.repository.get(user.Id);
-                        let newToken = TokenManager.create(user);
-                        this.HttpContext.response.created(newToken);
-                    } else {
-                        this.HttpContext.response.wrongPassword("Wrong password.");
-                    }
-                } else
-                    this.HttpContext.response.userNotFound("This user email is not found.");
-            } else
-                this.HttpContext.response.notImplemented();
-        } else
+
+        // If no payload
+        if (!loginInfo)
+        {
             this.HttpContext.response.badRequest("Credential Email and password are missing.");
+            return;
+        }
+
+        // If repository not initialized
+        if (this.repository === null)
+        {
+            this.HttpContext.response.notImplemented();
+            return;
+        }
+
+        let user = this.repository.findByField("Email", loginInfo.Email);
+
+        // If user not found from given email
+        if (user === null)
+        {
+            this.HttpContext.response.userNotFound("This user email is not found.");
+            return;
+        }
+
+        // If passwords mismatch
+        if (user.Password !== loginInfo.Password)
+        {
+            this.HttpContext.response.wrongPassword("Wrong password.");
+            return;
+        }
+
+        user = this.repository.get(user.Id);
+
+        // Parse verify code
+        user.Verified = user.VerifyCode === "verified";
+        delete user.VerifyCode;
+
+        let newToken = TokenManager.create(user);
+        this.HttpContext.response.created(newToken);
     }
 
     logout() {
@@ -79,29 +102,46 @@ export default class AccountsController extends Controller {
 
     //GET : /accounts/verify?id=...&code=.....
     verify() {
-        if (this.repository != null) {
-            let id = this.HttpContext.path.params.id;
-            let code = parseInt(this.HttpContext.path.params.code);
-            let userFound = this.repository.findByField('Id', id);
-            if (userFound) {
-                if (userFound.VerifyCode == code) {
-                    userFound.VerifyCode = "verified";
-                    this.repository.update(userFound.Id, userFound, false);
-                    if (this.repository.model.state.isValid) {
-                        userFound = this.repository.get(userFound.Id); // get data binded record
-                        this.HttpContext.response.JSON(userFound);
-                        this.sendConfirmedEmail(userFound);
-                    } else {
-                        this.HttpContext.response.unprocessable();
-                    }
-                } else {
-                    this.HttpContext.response.unverifiedUser("Verification code does not matched.");
-                }
-            } else {
-                this.HttpContext.response.unprocessable();
-            }
-        } else
+
+        // If repository not initialized
+        if (this.repository === null)
+        {
             this.HttpContext.response.notImplemented();
+            return;
+        }
+
+        let id = this.HttpContext.path.params.id;
+        let userFound = this.repository.findByField('Id', id);
+
+        // If no user found with the given ID
+        if (!userFound)
+        {
+            this.HttpContext.response.unprocessable();
+            return;
+        }
+
+        let code = parseInt(this.HttpContext.path.params.code);
+
+        // If codes mismatch
+        if (userFound.VerifyCode !== code)
+        {
+            this.HttpContext.response.unverifiedUser("Verification code does not matched.");
+            return;
+        }
+
+        userFound.VerifyCode = "verified";
+        this.repository.update(userFound.Id, userFound, false);
+
+        // If the model became invalid
+        if (!this.repository.model.state.isValid)
+        {
+            this.HttpContext.response.unprocessable();
+            return;
+        }
+
+        userFound = this.repository.get(userFound.Id); // get data binded record
+        this.HttpContext.response.JSON(userFound);
+        this.sendConfirmedEmail(userFound);
     }
 
     //GET : /accounts/conflict?Id=...&Email=.....
@@ -145,7 +185,7 @@ export default class AccountsController extends Controller {
             let newUser = this.repository.add(user);
             if (this.repository.model.state.isValid) {
 
-                this.HttpContext.response.ok();
+                this.HttpContext.response.JSON(newUser);
 
                 this.sendVerificationEmail(newUser);
             } else {
@@ -182,7 +222,7 @@ export default class AccountsController extends Controller {
             foundUser.Authorizations.writeAccess = foundUser.Authorizations.writeAccess == 1 ? -1 : 1;
             this.repository.update(user.Id, foundUser, false);
             if (this.repository.model.state.isValid) {
-                userFound = this.repository.get(userFound.Id); // get data binded record
+                let userFound = this.repository.get(foundUser.Id); // get data binded record
                 this.HttpContext.response.JSON(userFound);
             } else
                 this.HttpContext.response.badRequest(this.repository.model.state.errors);

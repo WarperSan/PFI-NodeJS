@@ -1,5 +1,7 @@
 class Users_API {
-    static Host_URL() { return "http://localhost:5000"; }
+    static Host_URL() {
+        return "http://localhost:5000";
+    }
 
     static initHttpState() {
         this.currentHttpError = "";
@@ -15,21 +17,26 @@ class Users_API {
         this.error = true;
     }
 
-    static async EmailExists(email)
-    {
+    /** Checks if the given email already exists */
+    static EmailExists(email) {
         Users_API.initHttpState();
         return new Promise(resolve => {
             $.ajax({
                 url: this.Host_URL() + "/accounts/exists?Email=" + email,
                 type: "GET",
-                success: (data) => { resolve(data); },
-                error: (xhr) => { Users_API.setHttpErrorState(xhr); resolve(null); }
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Users_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
             });
         });
     }
 
-    static async Register(data)
-    {
+    /** Registers a new user from the given data */
+    static Register(data) {
         Users_API.initHttpState();
         return new Promise(resolve => {
             $.ajax({
@@ -37,22 +44,49 @@ class Users_API {
                 type: "POST",
                 contentType: "application/json",
                 data: JSON.stringify(data),
-                success: (data) => { resolve(data); },
-                error: (xhr) => { Users_API.setHttpErrorState(xhr); resolve(null); }
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Users_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
             });
         });
     }
 
-    static async VerifyCode(id, code) {
+    /** Logs in using the given credentials */
+    static Login(credentials) {
         Users_API.initHttpState();
         return new Promise(resolve => {
             $.ajax({
-                url: `${this.Host_URL()}/accounts/verify?id=${id}&code=${code}`,
+                url: this.Host_URL() + "/token",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(credentials),
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Users_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    static Verify(id, code) {
+        Users_API.initHttpState();
+        return new Promise(resolve => {
+            $.ajax({
+                url: this.Host_URL() + `/accounts/verify?id=${id}&code=${code}`,
                 type: "GET",
-                success: (data) => { resolve(data); },
-                error: (xhr) => { 
-                    Users_API.setHttpErrorState(xhr); 
-                    resolve(null); 
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Users_API.setHttpErrorState(xhr);
+                    resolve(null);
                 }
             });
         });

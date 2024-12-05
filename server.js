@@ -10,7 +10,9 @@ import RouteRegister from './routeRegister.js';
 
 RouteRegister.add('GET', 'Bookmarks', 'list');
 RouteRegister.add('GET', 'accounts');
-RouteRegister.add('GET', 'accounts', 'exists');
+
+RouteRegister.add('GET', 'accounts', 'exists'); // Checks if a given email already exists
+
 RouteRegister.add('POST', 'accounts', 'register');
 RouteRegister.add('GET', 'accounts', 'verify');
 RouteRegister.add('GET', 'accounts', 'logout');

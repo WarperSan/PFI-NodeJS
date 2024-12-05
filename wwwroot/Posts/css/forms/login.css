@@ -1,0 +1,15 @@
+#loginContainer {
+    display: flex;
+    flex-direction: column;
+
+    margin: 5em auto;
+    width: 60%;
+}
+
+.loginError {
+    color: red;
+}
+
+#loginForm input, #loginForm textarea {
+    margin-top: 2em;
+}

@@ -9,14 +9,6 @@ const keywordsOnchangeDelay = 500;
 
 const USER_STORAGE_KEY = "userData";
 
-// LOGIN
-const LOGIN_CONTAINER_ID = "#loginContainer";
-const LOGIN_FORM_ID = "#loginForm";
-
-const LOGIN_EMAIL_ID = "#loginEmail";
-const LOGIN_PASSWORD_ID = "#loginPassword";
-const LOGIN_ERROR_CLASS = ".loginError";
-
 // SIGN UP
 const USER_FORM_CONTAINER_ID = "#userFormContainer";
 const USER_FORM_ID = "#userForm";
@@ -43,7 +35,6 @@ let waiting = null;
 let showKeywords = false;
 let keywordsOnchangeTimger = null;
 
-Init_UI();
 async function Init_UI() {
     postsPanel = new PageManager('postsScrollPanel', 'postsPanel', 'postSample', renderPosts);
     $('#createPost').on("click", async function () {
@@ -134,7 +125,7 @@ function intialView() {
 }
 async function showPosts(reset = false) {
     intialView();
-    $("#viewTitle").text("Fil de nouvelles");
+    setTitle("Fil de nouvelles");
     periodic_Refresh_paused = false;
     await postsPanel.show(reset);
 }
@@ -159,7 +150,9 @@ function showError(message, details = "") {
     $("#hiddenIcon2").show();
     $('#commit').hide();
     $('#abort').show();
-    $("#viewTitle").text("Erreur du serveur...");
+    setTitle("Erreur du serveur...");
+    hideLogin();
+    $(USER_FORM_CONTAINER_ID).hide();
     $("#errorContainer").show();
     $("#errorContainer").empty();
     $("#errorContainer").append($(`<div>${message}</div>`));
@@ -168,17 +161,17 @@ function showError(message, details = "") {
 
 function showCreatePostForm() {
     showForm();
-    $("#viewTitle").text("Ajout de nouvelle");
+    setTitle("Ajout de nouvelle");
     renderPostForm();
 }
 function showEditPostForm(id) {
     showForm();
-    $("#viewTitle").text("Modification");
+    setTitle("Modification");
     renderEditPostForm(id);
 }
 function showDeletePostForm(id) {
     showForm();
-    $("#viewTitle").text("Retrait");
+    setTitle("Retrait");
     renderDeletePostForm(id);
 }
 function showAbout() {
@@ -186,76 +179,160 @@ function showAbout() {
     $("#hiddenIcon").show();
     $("#hiddenIcon2").show();
     $('#abort').show();
-    $("#viewTitle").text("À propos...");
+    setTitle("À propos...");
     $("#aboutContainer").show();
 }
 
-//////////////////////////// Login and sign up /////////////////////////////////////////////////////////////
+//////////////////////////// Utils /////////////////////////////////////////////////////////////
 
+const TITLE_ID = "#viewTitle";
+const FORMS_CONTAINER_ID = "#content";
+
+/** Sets the title of the page to the given title */
+function setTitle(title) {
+    $(TITLE_ID).text(title);
+}
+
+/** Fetches the container with the given id */
+function getContainer(id) {
+    let container = $(id);
+
+    // If already created
+    if (container.length !== 0)
+        return container;
+
+    $(FORMS_CONTAINER_ID).append($(`<div id="${id.substring(1)}"></div>`));
+    return getContainer(id);
+}
+
+//////////////////////////// Log in /////////////////////////////////////////////////////////////
+
+const LOGIN_CONTAINER_ID = "#loginContainer";
+const LOGIN_FORM_ID = "#loginForm";
+
+const LOGIN_EMAIL_ID = "#loginEmail";
+const LOGIN_PASSWORD_ID = "#loginPassword";
+const LOGIN_ERROR_CLASS = ".loginError";
+
+/** Shows the login form */
 function showLogin() {
     hidePosts();
     $("#hiddenIcon").show();
     $("#hiddenIcon2").show();
     $('#abort').show();
-    $("#viewTitle").text("Connexion");
+    setTitle("Connexion");
 
     const SIGNUP_BUTTON = "#signup-btn";
 
-    let form = $(LOGIN_CONTAINER_ID);
-    form.empty();
-    form.append($(`
+    let container = getContainer(LOGIN_CONTAINER_ID);
+    container.empty();
+    container.append($(`
         <form class="form" id="${LOGIN_FORM_ID.substring(1)}">
-            <input class="form-control" name="Email" id="${LOGIN_EMAIL_ID.substring(1)}" placeholder="Courriel" required="" value="" type="text">
+            <input class="form-control" name="Email" id="${LOGIN_EMAIL_ID.substring(1)}" placeholder="Courriel" required="" value="" type="email">
             <input class="form-control" name="Password" id="${LOGIN_PASSWORD_ID.substring(1)}" placeholder="Mot de passe" required="" value="" type="password">
 
-            <input type="submit" value="Entrer" id="loginSubmit">
+            <input type="submit" value="Entrer" class="primary">
         </form>
         
         <hr>
         
-        <button id="${SIGNUP_BUTTON.substring(1)}">Nouveau compte</button>
+        <button id="${SIGNUP_BUTTON.substring(1)}" class="secondary">Nouveau compte</button>
     `));
 
-    form.on("submit", async function (event) {
-        event.preventDefault();
-        $(LOGIN_ERROR_CLASS).remove();
+    container.on("submit", onLoginSubmit);
 
-        let credentials = {
-            Email: $(LOGIN_EMAIL_ID).val(),
-            Password: $(LOGIN_PASSWORD_ID).val(),
-        };
-
-        // Check if credentials are valid
-        let login = await Posts_API.Login(credentials);
-
-        // If credentials invalid, show error
-        if (login === null) {
-            let errorMessage = Posts_API.currentHttpError;
-            let inputID = "";
-
-            if (errorMessage === "This user email is not found.") {
-                errorMessage = "Courriel introuvable";
-                inputID = LOGIN_EMAIL_ID;
-            } else if (errorMessage === "Wrong password.") {
-                errorMessage = "Mot de passe incorrect";
-                inputID = LOGIN_PASSWORD_ID;
-            }
-
-            $(inputID).after($(`<p class="${LOGIN_ERROR_CLASS.substring(1)}">${errorMessage}</p>`));
-            return;
-        }
-
-        // If they are, log in
-        sessionStorage.setItem("")
-        showError("Une erreur est survenue! ", JSON.stringify(login));
-    });
-
-    form.find(SIGNUP_BUTTON).on("click", function () {
+    container.find(SIGNUP_BUTTON).on("click", function () {
         showCreateAccountForm();
     });
 
-    form.show();
+    container.show();
+
+    initFormValidation();
 }
+
+/** Hides the login form */
+function hideLogin() {
+    $(LOGIN_CONTAINER_ID).hide();
+}
+
+/** Called when the login form is submitted */
+async function onLoginSubmit(event) {
+    event.preventDefault();
+    $(LOGIN_ERROR_CLASS).remove();
+
+    let credentials = {
+        Email: $(LOGIN_EMAIL_ID).val(),
+        Password: $(LOGIN_PASSWORD_ID).val(),
+    };
+
+    // Check if credentials are valid
+    let login = await Users_API.Login(credentials);
+
+    // If credentials invalid, show error
+    if (login === null) {
+        onLoginError(Users_API.currentHttpError);
+        return;
+    }
+
+    onLoginSuccess(login);
+}
+
+/** Called when the login form received a success */
+function onLoginSuccess(data) {
+    // Check if token acquired
+    let token = data.Access_token;
+
+    if (token === null)
+    {
+        showError("Une erreur est survenue! ");
+        return;
+    }
+
+    let user = data.User;
+
+    if (user === null)
+    {
+        showError("Une erreur est survenue! ");
+        return;
+    }
+
+    console.log(data);
+
+    // If user already verified, skip
+    if (user.Verified)
+    {
+        onCompleteLogin(token, data);
+        return;
+    }
+
+    showVerifyUser(data);
+}
+
+function onCompleteLogin(token, data) {
+    // Save token
+    sessionStorage.setItem(USER_STORAGE_KEY, token);
+
+    //initTimeout(10, logout);
+    //startCountdown();
+}
+
+/** Called when the login form received an error */
+function onLoginError(errorMessage) {
+    let inputID = "";
+
+    if (errorMessage === "This user email is not found.") {
+        errorMessage = "Courriel introuvable";
+        inputID = LOGIN_EMAIL_ID;
+    } else if (errorMessage === "Wrong password.") {
+        errorMessage = "Mot de passe incorrect";
+        inputID = LOGIN_PASSWORD_ID;
+    }
+
+    $(inputID).after($(`<p class="${LOGIN_ERROR_CLASS.substring(1)}">${errorMessage}</p>`));
+}
+
+//////////////////////////// Sign up /////////////////////////////////////////////////////////////
+
 function showCreateAccountForm() {
     hidePosts();
     $(LOGIN_CONTAINER_ID).hide();
@@ -320,8 +397,14 @@ function renderUserForm(user = null) {
 
         form.find(SIGNUP_EMAIL_ID).attr("CustomErrorMessage", "Ce courriel est déjà utilisé");
         form.find(SIGNUP_EMAIL_ID).blur(async function (event) {
+
+            let email = $(this).val();
+
+            if (email === null || email === "")
+                return;
+
             // Find all emails
-            let exists = await Users_API.EmailExists($(this).val());
+            let exists = await Users_API.EmailExists(email);
 
             // Check if email already exist
             if (!exists)
@@ -348,11 +431,11 @@ function renderUserForm(user = null) {
             // If form is valid, show pop up for verification code
             $('#verificationModal').modal('show');
 
-            // 
+            //
             $('#confirmCode').on('click', async function () {
                 // let inputCode = $('#verificationCode').val();
-                
-                // let user = await Users_API.VerifyCode(id, inputCode);
+
+                // let user = await Users_API.Verify(id, inputCode);
 
                 // if (!user) {
                 //     showError("Une erreur est survenue!");
@@ -376,7 +459,7 @@ function renderUserForm(user = null) {
 
             // Login
             console.log("Login with:");
-            console.log(user);
+            console.log(newUser);
         })
 
         form.find(USER_FORM_CANCEL_BUTTON_ID).on("click", function () {
@@ -417,22 +500,22 @@ function start_Periodic_Refresh() {
         await showPosts();
     })
     setInterval(async () => {
-        if (!periodic_Refresh_paused) {
-            let etag = await Posts_API.HEAD();
-            // the etag contain the number of model records in the following form
-            // xxx-etag
-            let postsCount = parseInt(etag.split("-")[0]);
-            if (currentETag != etag) {
-                if (postsCount != currentPostsCount) {
-                    console.log("postsCount", postsCount)
-                    currentPostsCount = postsCount;
-                    $("#reloadPosts").removeClass('white');
-                } else
-                    await showPosts();
-                currentETag = etag;
+            if (!periodic_Refresh_paused) {
+                let etag = await Posts_API.HEAD();
+                // the etag contain the number of model records in the following form
+                // xxx-etag
+                let postsCount = parseInt(etag.split("-")[0]);
+                if (currentETag != etag) {
+                    if (postsCount != currentPostsCount) {
+                        console.log("postsCount", postsCount)
+                        currentPostsCount = postsCount;
+                        $("#reloadPosts").removeClass('white');
+                    } else
+                        await showPosts();
+                    currentETag = etag;
+                }
             }
-        }
-    },
+        },
         periodicRefreshPeriod * 1000);
 }
 async function renderPosts(queryString) {
@@ -804,3 +887,4 @@ function getFormData($form) {
     });
     return jsonObject;
 }
+Init_UI();
