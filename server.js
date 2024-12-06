@@ -12,10 +12,10 @@ RouteRegister.add('GET', 'Bookmarks', 'list');
 RouteRegister.add('GET', 'accounts');
 
 RouteRegister.add('GET', 'accounts', 'exists'); // Checks if a given email already exists
+RouteRegister.add('POST', 'accounts', 'register'); // Signs up a user to the system
+RouteRegister.add('GET', 'accounts', 'verify'); // Verifies a user to the system
+RouteRegister.add('GET', 'accounts', 'logout'); // Logs out the connected user from the system
 
-RouteRegister.add('POST', 'accounts', 'register');
-RouteRegister.add('GET', 'accounts', 'verify');
-RouteRegister.add('GET', 'accounts', 'logout');
 RouteRegister.add('PUT', 'accounts', 'modify');
 RouteRegister.add('GET', 'accounts', 'remove');
 RouteRegister.add('GET', 'accounts', 'conflict');

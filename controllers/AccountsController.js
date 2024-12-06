@@ -5,7 +5,6 @@ import * as utilities from "../utilities.js";
 import Gmail from "../gmail.js";
 import Controller from './Controller.js';
 import AccessControl from '../accessControl.js';
-import {log} from "../log.js";
 
 export default class AccountsController extends Controller {
     constructor(HttpContext) {
@@ -63,20 +62,51 @@ export default class AccountsController extends Controller {
 
         // Parse verify code
         user.Verified = user.VerifyCode === "verified";
+        console.log(user.VerifyCode);
+        console.log(user.VerifyCode === "verified");
         delete user.VerifyCode;
 
         let newToken = TokenManager.create(user);
         this.HttpContext.response.created(newToken);
     }
 
+    // GET: /accounts/logout?id=...&token=...
     logout() {
-        let userId = this.HttpContext.path.params.userId;
-        if (userId) {
-            TokenManager.logout(userId);
-            this.HttpContext.response.ok();
-        } else {
-            this.HttpContext.response.badRequest("UserId is not specified.")
+        let id = this.HttpContext.path.params.id;
+
+        // If no id given
+        if (!id)
+        {
+            this.HttpContext.response.badRequest("Id is not specified.")
+            return;
         }
+
+        let tokenFound = TokenManager.findUserToken(id);
+
+        // If no token for this user
+        if (tokenFound === null)
+        {
+            this.HttpContext.response.ok();
+            return;
+        }
+
+        let token = this.HttpContext.path.params.token;
+
+        if (!token)
+        {
+            this.HttpContext.response.badRequest("Token is not specified.")
+            return;
+        }
+
+        // If tokens mismatch
+        if (tokenFound.Access_token !== token)
+        {
+            this.HttpContext.response.badRequest("You don't have the rights to end this connection.");
+            return;
+        }
+
+        TokenManager.logout(id);
+        this.HttpContext.response.ok();
     }
 
     sendVerificationEmail(user) {

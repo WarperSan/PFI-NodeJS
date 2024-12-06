@@ -7,23 +7,6 @@ const waitingGifTrigger = 2000;
 const minKeywordLenth = 3;
 const keywordsOnchangeDelay = 500;
 
-const USER_STORAGE_KEY = "userData";
-
-// SIGN UP
-const USER_FORM_CONTAINER_ID = "#userFormContainer";
-const USER_FORM_ID = "#userForm";
-
-const USER_FORM_CANCEL_BUTTON_ID = "#userCancelButton";
-const USER_FORM_DELETE_BUTTON_ID = "#userDeleteButton";
-
-const SIGNUP_EMAIL_ID = "#signupEmail";
-const SIGNUP_EMAIL_VERIFY_ID = "#signupEmailVerify";
-const SIGNUP_PASSWORD_ID = "#signupPassword"
-const SIGNUP_PASSWORD_VERIFY_ID = "#signupPasswordVerify"
-const SIGNUP_NAME_ID = "#signupName";
-const SIGNUP_AVATAR_ID = "#signupAvatar"
-
-
 let categories = [];
 let selectedCategory = "";
 let currentETag = "";
@@ -239,11 +222,8 @@ function showLogin() {
         <button id="${SIGNUP_BUTTON.substring(1)}" class="secondary">Nouveau compte</button>
     `));
 
-    container.on("submit", onLoginSubmit);
-
-    container.find(SIGNUP_BUTTON).on("click", function () {
-        showCreateAccountForm();
-    });
+    container.find("form").on("submit", onLoginSubmit);
+    container.find(SIGNUP_BUTTON).on("click", showSignUp);
 
     container.show();
 
@@ -266,29 +246,29 @@ async function onLoginSubmit(event) {
     };
 
     // Check if credentials are valid
-    let login = await Users_API.Login(credentials);
+    let token = await Users_API.Login(credentials);
 
     // If credentials invalid, show error
-    if (login === null) {
+    if (Users_API.error) {
         onLoginError(Users_API.currentHttpError);
         return;
     }
 
-    onLoginSuccess(login);
+    onLoginSuccess(token);
 }
 
 /** Called when the login form received a success */
-function onLoginSuccess(data) {
+function onLoginSuccess(token) {
     // Check if token acquired
-    let token = data.Access_token;
+    let accessToken = token.Access_token;
 
-    if (token === null)
+    if (accessToken === null)
     {
         showError("Une erreur est survenue! ");
         return;
     }
 
-    let user = data.User;
+    let user = token.User;
 
     if (user === null)
     {
@@ -296,21 +276,25 @@ function onLoginSuccess(data) {
         return;
     }
 
-    console.log(data);
-
     // If user already verified, skip
     if (user.Verified)
     {
-        onCompleteLogin(token, data);
+        onCompleteLogin(accessToken, user);
         return;
     }
 
-    showVerifyUser(data);
+    showUserVerification(user.Id, accessToken);
 }
 
-function onCompleteLogin(token, data) {
-    // Save token
-    sessionStorage.setItem(USER_STORAGE_KEY, token);
+/** Called when the login process is complete */
+function onCompleteLogin(token, user) {
+    Users_API.SetToken(token);
+
+    hideSignUp();
+    hideLogin();
+    showPosts();
+
+    console.log("LOGGED");
 
     //initTimeout(10, logout);
     //startCountdown();
@@ -331,23 +315,62 @@ function onLoginError(errorMessage) {
     $(inputID).after($(`<p class="${LOGIN_ERROR_CLASS.substring(1)}">${errorMessage}</p>`));
 }
 
+//////////////////////////// Log in /////////////////////////////////////////////////////////////
+
+/** Logs out the connected user */
+async function logout() {
+    await Users_API.Logout("2a54c560-b357-11ef-9a65-37edaf01c440");
+    updateDropDownMenu();
+}
+
 //////////////////////////// Sign up /////////////////////////////////////////////////////////////
 
-function showCreateAccountForm() {
+const USER_FORM_CONTAINER_ID = "#userFormContainer";
+const USER_FORM_ID = "#userForm";
+
+const USER_FORM_CANCEL_BUTTON_ID = "#userCancelButton";
+const USER_FORM_DELETE_BUTTON_ID = "#userDeleteButton";
+
+const SIGNUP_EMAIL_ID = "#signupEmail";
+const SIGNUP_EMAIL_VERIFY_ID = "#signupEmailVerify";
+const SIGNUP_PASSWORD_ID = "#signupPassword"
+const SIGNUP_PASSWORD_VERIFY_ID = "#signupPasswordVerify"
+const SIGNUP_NAME_ID = "#signupName";
+
+/** Shows the signup form */
+function showSignUp() {
     hidePosts();
-    $(LOGIN_CONTAINER_ID).hide();
-    $("#viewTitle").text("Inscription");
-    renderUserForm();
+    hideLogin();
+    setTitle("Inscription");
+
+    let user = createEmptyUser();
+    renderUserForm(user, true, createUserCallback);
 }
-function renderUserForm(user = null) {
-    let create = user == null;
-    if (create) user = newUser();
 
-    let oldPasswordField = "";
-    if (!create)
-        oldPasswordField = `<input class="form-control" name="OldPassword" id="oldPassword" placeholder="Ancien mot de passe" required="" value="" type="password">`;
+/** Hides the signup form */
+function hideSignUp() {
+    $(USER_FORM_CONTAINER_ID).hide();
+}
 
-    let form = $(USER_FORM_CONTAINER_ID);
+/** Creates an empty user */
+function createEmptyUser(avatar = "no-avatar.png") {
+    let user = {};
+    user.Id = 0;
+    user.Name = "";
+    user.Email = "";
+    user.Password = "";
+    user.Avatar = avatar;
+
+    return user;
+}
+
+/** Renders a user form from the given user */
+function renderUserForm(user, isCreating, renderCallback = undefined) {
+    let oldPasswordField = isCreating
+        ? ""
+        : `<input class="form-control" name="OldPassword" id="oldPassword" placeholder="Ancien mot de passe" required="" value="" type="password">`;
+
+    let form = getContainer(USER_FORM_CONTAINER_ID);
     form.empty();
     form.append($(`
         <form class="form" id="${USER_FORM_ID.substring(1)}">
@@ -356,7 +379,15 @@ function renderUserForm(user = null) {
             <fieldset class="form-control">
                 <legend>Adresse de courriel</legend>
                 <input class="form-control" name="Email" id="${SIGNUP_EMAIL_ID.substring(1)}" placeholder="Courriel" required="" value="${user.Email}" type="text">
-                <input class="form-control" name="EmailVerify" id="${SIGNUP_EMAIL_VERIFY_ID.substring(1)}" placeholder="Vérification" required="" value="${user.Email}" type="text">
+                <input 
+                    class="form-control" 
+                    name="EmailVerify" 
+                    matchedInputId="${SIGNUP_EMAIL_ID.substring(1)}"
+                    id="${SIGNUP_EMAIL_VERIFY_ID.substring(1)}" 
+                    placeholder="Vérification" 
+                    required="" 
+                    value="${user.Email}" 
+                    type="text">
             </fieldset>
             
             <fieldset class="form-control">
@@ -365,7 +396,15 @@ function renderUserForm(user = null) {
                 ${oldPasswordField}
                 
                 <input class="form-control" name="Password" id="${SIGNUP_PASSWORD_ID.substring(1)}" placeholder="Mot de passe" required="" value="" type="password">
-                <input class="form-control" name="PasswordVerify" id="${SIGNUP_PASSWORD_VERIFY_ID.substring(1)}" placeholder="Vérification" required="" value="" type="password">
+                <input 
+                    class="form-control MatchedInput" 
+                    name="PasswordVerify" 
+                    matchedInputId="${SIGNUP_PASSWORD_ID.substring(1)}"
+                    id="${SIGNUP_PASSWORD_VERIFY_ID.substring(1)}" 
+                    placeholder="Vérification" 
+                    required="" 
+                    value="" 
+                    type="password">
 
             </fieldset>
             
@@ -379,7 +418,7 @@ function renderUserForm(user = null) {
                 
                 <div class='imageUploaderContainer'>
                     <div class='imageUploader' 
-                        newImage='${create}' 
+                        newImage='${isCreating}' 
                         controlId='Avatar' 
                         imageSrc='${user.Avatar}' 
                         waitingImage="Loading_icon.gif">
@@ -391,103 +430,128 @@ function renderUserForm(user = null) {
         </form>
     `));
 
+    if (renderCallback !== null && renderCallback !== undefined)
+        renderCallback(form);
 
-    if (create) {
-        form.append($(`<div><button id="${USER_FORM_CANCEL_BUTTON_ID.substring(1)}">Annuler</button></div>`));
-
-        form.find(SIGNUP_EMAIL_ID).attr("CustomErrorMessage", "Ce courriel est déjà utilisé");
-        form.find(SIGNUP_EMAIL_ID).blur(async function (event) {
-
-            let email = $(this).val();
-
-            if (email === null || email === "")
-                return;
-
-            // Find all emails
-            let exists = await Users_API.EmailExists(email);
-
-            // Check if email already exist
-            if (!exists)
-                return;
-
-            event.target.setCustomValidity("Ce courriel est déjà utilisé");
-            event.target.reportValidity();
-        });
-
-        form.find(USER_FORM_ID).on("submit", async function (event) {
-            event.preventDefault();
-            let newUser = getFormData($(USER_FORM_ID));
-
-            delete newUser.EmailVerify;
-            delete newUser.PasswordVerify;
-
-            newUser = await Users_API.Register(newUser);
-
-            if (newUser === null) {
-                showError("Une erreur est survenue!");
-                return;
-            }
-
-            // If form is valid, show pop up for verification code
-            $('#verificationModal').modal('show');
-
-            //
-            $('#confirmCode').on('click', async function () {
-                // let inputCode = $('#verificationCode').val();
-
-                // let user = await Users_API.Verify(id, inputCode);
-
-                // if (!user) {
-                //     showError("Une erreur est survenue!");
-                //     return;
-                // }
-
-                // if (parseInt(inputCode) === user.VerifyCode) {
-                //     alert("Vérification réussie !");
-                //     $('#verificationModal').modal('hide');
-                // } else {
-                //     alert("Code de vérification incorrect !");
-                // }
-            })
-
-            // Returns to login page when clicked
-            $('#returnToLogin').on('click', function () {
-                $('#verificationModal').modal('hide');
-                form.hide();
-                showLogin();
-            })
-
-            // Login
-            console.log("Login with:");
-            console.log(newUser);
-        })
-
-        form.find(USER_FORM_CANCEL_BUTTON_ID).on("click", function () {
-            form.hide();
-            showLogin();
-        });
-    }
-    else {
-        form.append($(`<div><button id="${USER_FORM_DELETE_BUTTON_ID.substring(1)}">Effacer le compte</button></div>`));
-        form.find(USER_FORM_DELETE_BUTTON_ID).on("click", function () {
-            console.log("DELETE");
-        });
-    }
     form.show();
 
     initImageUploaders();
     initFormValidation(); // important do to after all html injection!
 }
 
-function newUser() {
-    let User = {};
-    User.Id = 0;
-    User.Name = "";
-    User.Email = "";
-    User.Password = "";
-    User.Avatar = "no-avatar.png";
+/** Called when rendering a form designated to create a new user */
+function createUserCallback(form) {
+    form.append($(`<div><button id="${USER_FORM_CANCEL_BUTTON_ID.substring(1)}">Annuler</button></div>`));
 
-    return User;
+    form.find(SIGNUP_EMAIL_ID).attr("CustomErrorMessage", "Ce courriel est déjà utilisé");
+    form.find(SIGNUP_EMAIL_ID).blur(createUserEmailVerify);
+    form.find(USER_FORM_ID).on("submit", createUserFormSubmit);
+    form.find(USER_FORM_CANCEL_BUTTON_ID).on("click", function () {
+        form.hide();
+        showLogin();
+    });
+}
+
+/** Called when an email is needed to be unique among users */
+async function createUserEmailVerify(event) {
+    let email = $(this).val();
+
+    if (email === null || email === "")
+        return;
+
+    // Find all emails
+    let exists = await Users_API.EmailExists(email);
+
+    // Check if email already exist
+    if (Users_API.error || !exists)
+        return;
+
+    event.target.setCustomValidity("ERROR");
+    event.target.reportValidity();
+}
+
+/** Called when the user creation form is submitted */
+async function createUserFormSubmit(event) {
+    event.preventDefault();
+    let newUser = getFormData($(USER_FORM_ID));
+
+    // Remove extra fields
+    delete newUser.EmailVerify;
+    delete newUser.PasswordVerify;
+
+    newUser = await Users_API.Register(newUser);
+
+    if (Users_API.error) {
+        showError("Une erreur est survenue!");
+        return;
+    }
+
+    // If form is valid, show pop up for verification code
+    showUserVerification(newUser.Id, undefined);
+
+    // Login
+    console.log("Login with:");
+    console.log(newUser);
+}
+
+function modifyUserCallback(form) {
+    form.append($(`<div><button id="${USER_FORM_DELETE_BUTTON_ID.substring(1)}">Effacer le compte</button></div>`));
+    form.find(USER_FORM_DELETE_BUTTON_ID).on("click", function () {
+        console.log("DELETE");
+    });
+}
+
+//////////////////////////// User Verification /////////////////////////////////////////////////////////////
+
+const USER_VERIFICATION_POPUP_ID = "#verificationModal";
+const USER_VERIFICATION_CONFIRM_ID = "#confirmCode";
+const USER_VERIFICATION_RETURN_ID = "#returnToLogin";
+const USER_VERIFICATION_CODE_INPUT_ID = "#verificationCode";
+
+/** Shows the user verification popup */
+function showUserVerification(id, token) {
+    $(USER_VERIFICATION_POPUP_ID).modal('show');
+
+    $(USER_VERIFICATION_CONFIRM_ID).off('click');
+    $(USER_VERIFICATION_RETURN_ID).off('click');
+
+    $(USER_VERIFICATION_CONFIRM_ID).on('click', function () {
+        onUserVerificationConfirm(id, token);
+    });
+    $(USER_VERIFICATION_RETURN_ID).on('click', onUserVerificationReturn);
+}
+
+/** Hides the user verification popup */
+function hideUserVerification() {
+    $(USER_VERIFICATION_POPUP_ID).modal('hide');
+}
+
+/** Called when the user confirms the user verification popup */
+async function onUserVerificationConfirm(id, token) {
+    let code = $(USER_VERIFICATION_CODE_INPUT_ID).val();
+    code = code.trim();
+
+    let user = await Users_API.Verify(id, code);
+
+    if (Users_API.error) {
+
+        if (Users_API.currentHttpError === "Verification code does not matched.")
+            showError("Le code entré n'est pas valide.", "Veuillez vérifier si vous n'avez pas oublié un chiffre.");
+        else
+            showError("Un erreur est survenue!");
+        return;
+    }
+
+    hideUserVerification();
+
+    onCompleteLogin(token, user);
+}
+
+/** Called when the user returns from the user verification popup */
+function onUserVerificationReturn() {
+    hideUserVerification();
+    hideSignUp();
+    showLogin();
 }
 
 //////////////////////////// Posts rendering /////////////////////////////////////////////////////////////
@@ -592,55 +656,6 @@ async function compileCategories() {
         }
     }
 }
-function updateDropDownMenu() {
-    let DDMenu = $("#DDMenu");
-    let selectClass = selectedCategory === "" ? "fa-check" : "fa-fw";
-    DDMenu.empty();
-    DDMenu.append($(`
-        <div class="dropdown-item menuItemLayout" id="connectionCmd">
-            <i class="menuIcon fa-solid fa-arrow-right-to-bracket mx-2"></i> Connexion
-        </div>
-    `));
-    DDMenu.append($(`<div class="dropdown-divider"></div> `));
-    DDMenu.append($(`
-        <div class="dropdown-item menuItemLayout" id="allCatCmd">
-            <i class="menuIcon fa ${selectClass} mx-2"></i> Toutes les catégories
-        </div>
-        `));
-    DDMenu.append($(`<div class="dropdown-divider"></div>`));
-    categories.forEach(category => {
-        selectClass = selectedCategory === category ? "fa-check" : "fa-fw";
-        DDMenu.append($(`
-            <div class="dropdown-item menuItemLayout category" id="allCatCmd">
-                <i class="menuIcon fa ${selectClass} mx-2"></i> ${category}
-            </div>
-        `));
-    })
-    DDMenu.append($(`<div class="dropdown-divider"></div> `));
-    DDMenu.append($(`
-        <div class="dropdown-item menuItemLayout" id="aboutCmd">
-            <i class="menuIcon fa fa-info-circle mx-2"></i> À propos...
-        </div>
-        `));
-
-    // Events
-    $("#connectionCmd").on("click", function () {
-        showLogin();
-    });
-    $('#aboutCmd').on("click", function () {
-        showAbout();
-    });
-    $('#allCatCmd').on("click", async function () {
-        selectedCategory = "";
-        await showPosts(true);
-        updateDropDownMenu();
-    });
-    $('.category').on("click", async function () {
-        selectedCategory = $(this).text().trim();
-        await showPosts(true);
-        updateDropDownMenu();
-    });
-}
 function attach_Posts_UI_Events_Callback() {
 
     linefeeds_to_Html_br(".postText");
@@ -680,6 +695,81 @@ function addWaitingGif() {
 function removeWaitingGif() {
     clearTimeout(waiting);
     $("#waitingGif").remove();
+}
+
+//////////////////////////// Dropdown menu /////////////////////////////////////////////////////////////
+
+const DROPDOWN_MENU_ID = "#DDMenu";
+
+/** Updates the dropdown menu with new items */
+function updateDropDownMenu() {
+    $(DROPDOWN_MENU_ID).empty();
+
+    if (Users_API.IsUserLoggedIn())
+        addLoggedInItems();
+    else
+        addLoggedOutItems();
+
+    addDropdownDivider();
+
+    let selectClass = selectedCategory === "" ? "fa-check" : "fa-fw";
+    let allCategories = addDropdownItem("Toutes les catégories", "allCatCmd", `fa ${selectClass}`);
+    allCategories.on("click", async function () {
+        selectedCategory = "";
+        await showPosts(true);
+        updateDropDownMenu();
+    });
+
+    addDropdownDivider();
+
+    categories.forEach(category => {
+
+        selectClass = selectedCategory === category ? "fa-check" : "fa-fw";
+        let cat = addDropdownItem(category, undefined, `fa ${selectClass}`);
+        cat.on("click", async function () {
+            selectedCategory = $(this).text().trim();
+            await showPosts(true);
+            updateDropDownMenu();
+        });
+    });
+
+    addDropdownDivider();
+
+    let about = addDropdownItem("À propos...", "aboutCmd", "fa fa-info-circle");
+    about.on("click", showAbout);
+}
+
+/** Adds an item on the dropdown menu */
+function addDropdownItem(text, id, classes) {
+    let item = $(`
+        <div class="dropdown-item menuItemLayout" id="${id}">
+            <i class="menuIcon mx-2 ${classes}"></i> ${text}
+        </div>
+    `);
+    $(DROPDOWN_MENU_ID).append(item);
+    return item;
+}
+
+/** Adds a divider on the dropdown menu */
+function addDropdownDivider() {
+    $(DROPDOWN_MENU_ID).append($(`<div class="dropdown-divider"></div> `));
+}
+
+/** Adds the dropdown items for a logged-out user */
+function addLoggedOutItems() {
+    let connection = addDropdownItem("Connexion", "connectionCmd", "fa-solid fa-arrow-right-to-bracket");
+    connection.on("click", function () {
+        showLogin();
+    });
+}
+
+/** Adds the dropdown items for a logged-in user */
+function addLoggedInItems() {
+    let userInfo = addDropdownItem("USER INFO MISSING", "userInfoCmd", "");
+    addDropdownDivider();
+    let modifyUser = addDropdownItem("Modifier votre profil", "modifyUserCmd", "fa-solid fa-user-pen");
+    let logoutUser = addDropdownItem("Déconnexion", "logoutUserCmd", "fa-solid fa-right-from-bracket");
+    logoutUser.on("click", logout);
 }
 
 /////////////////////// Posts content manipulation ///////////////////////////////////////////////////////

@@ -1,3 +1,5 @@
+const LOCAL_USER_TOKEN_KEY = "localUserToken";
+
 class Users_API {
     static Host_URL() {
         return "http://localhost:5000";
@@ -75,6 +77,27 @@ class Users_API {
         });
     }
 
+    /** Logs out the user of the given id */
+    static Logout(id) {
+        let token = sessionStorage.getItem(LOCAL_USER_TOKEN_KEY);
+        Users_API.initHttpState();
+        return new Promise(resolve => {
+            $.ajax({
+                url: this.Host_URL() + `/accounts/logout?id=${id}&token=${token}`,
+                type: "GET",
+                success: (data) => {
+                    sessionStorage.removeItem(LOCAL_USER_TOKEN_KEY);
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Users_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    /** Verifies the user creation of the given ID with the given code */
     static Verify(id, code) {
         Users_API.initHttpState();
         return new Promise(resolve => {
@@ -90,5 +113,15 @@ class Users_API {
                 }
             });
         });
+    }
+
+    /** Sets the token of the local user to the given token */
+    static SetToken(token) {
+        sessionStorage.setItem(LOCAL_USER_TOKEN_KEY, token);
+    }
+
+    /** Checks if the local user is logged in */
+    static IsUserLoggedIn() {
+        return sessionStorage.getItem(LOCAL_USER_TOKEN_KEY) !== null;
     }
 }

@@ -23,6 +23,7 @@ export default
             console.log(BgGreen + FgWhite, "User " + token.User.Name + " logged in");
         } else {
             console.log(BgGreen + FgWhite, "User " + token.User.Name + " already logged in");
+            token.User = user; // Update user
         }
         return token;
     }
