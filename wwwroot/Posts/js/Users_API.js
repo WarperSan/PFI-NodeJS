@@ -79,9 +79,9 @@ class Users_API {
 
     /** Logs out the user of the given id */
     static Logout(id) {
-        let token = sessionStorage.getItem(LOCAL_USER_TOKEN_KEY);
         Users_API.initHttpState();
         return new Promise(resolve => {
+            let token = this.#GetToken();
             $.ajax({
                 url: this.Host_URL() + `/accounts/logout?id=${id}&token=${token}`,
                 type: "GET",
@@ -115,6 +115,10 @@ class Users_API {
         });
     }
 
+    static #GetToken() {
+        return sessionStorage.getItem(LOCAL_USER_TOKEN_KEY);
+    }
+
     /** Sets the token of the local user to the given token */
     static SetToken(token) {
         sessionStorage.setItem(LOCAL_USER_TOKEN_KEY, token);
@@ -122,6 +126,81 @@ class Users_API {
 
     /** Checks if the local user is logged in */
     static IsUserLoggedIn() {
-        return sessionStorage.getItem(LOCAL_USER_TOKEN_KEY) !== null;
+        return this.#GetToken() !== null;
+    }
+
+    /** Fetches the local user */
+    static GetLocalUser() {
+        Users_API.initHttpState();
+
+        return new Promise(resolve => {
+
+            // If not logged in
+            if (!this.IsUserLoggedIn())
+            {
+                resolve(null);
+                return;
+            }
+
+            let token = this.#GetToken();
+
+            $.ajax({
+                url: this.Host_URL() + `/accounts/fromToken?token=${token}`,
+                type: "GET",
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Users_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    /** Modifies the local user with the given data */
+    static Modify(newData) {
+        Users_API.initHttpState();
+
+        return new Promise(resolve => {
+            $.ajax({
+                url: this.Host_URL() + `/accounts/modify`,
+                headers: {
+                    Authorization: `Bearer ${this.#GetToken()}`,
+                },
+                type: "PUT",
+                contentType: "application/json",
+                data: JSON.stringify(newData),
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Users_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    /** Deletes the user with the given id */
+    static Delete(id) {
+        Users_API.initHttpState();
+
+        return new Promise(resolve => {
+            $.ajax({
+                url: this.Host_URL() + `/accounts/remove/${id}`,
+                headers: {
+                    Authorization: `Bearer ${this.#GetToken()}`,
+                },
+                type: "GET",
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Users_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
+            });
+        });
     }
 }

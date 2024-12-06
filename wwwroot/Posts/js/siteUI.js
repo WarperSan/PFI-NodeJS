@@ -290,7 +290,7 @@ function onLoginSuccess(token) {
 function onCompleteLogin(token, user) {
     Users_API.SetToken(token);
 
-    hideSignUp();
+    hideUserForm();
     hideLogin();
     showPosts();
 
@@ -315,7 +315,7 @@ function onLoginError(errorMessage) {
     $(inputID).after($(`<p class="${LOGIN_ERROR_CLASS.substring(1)}">${errorMessage}</p>`));
 }
 
-//////////////////////////// Log in /////////////////////////////////////////////////////////////
+//////////////////////////// Log out /////////////////////////////////////////////////////////////
 
 /** Logs out the connected user */
 async function logout() {
@@ -334,6 +334,7 @@ const USER_FORM_DELETE_BUTTON_ID = "#userDeleteButton";
 const SIGNUP_EMAIL_ID = "#signupEmail";
 const SIGNUP_EMAIL_VERIFY_ID = "#signupEmailVerify";
 const SIGNUP_PASSWORD_ID = "#signupPassword"
+const SIGNUP_OLD_PASSWORD_ID = "#oldPassword"
 const SIGNUP_PASSWORD_VERIFY_ID = "#signupPasswordVerify"
 const SIGNUP_NAME_ID = "#signupName";
 
@@ -341,6 +342,7 @@ const SIGNUP_NAME_ID = "#signupName";
 function showSignUp() {
     hidePosts();
     hideLogin();
+    $('#abort').show();
     setTitle("Inscription");
 
     let user = createEmptyUser();
@@ -348,7 +350,7 @@ function showSignUp() {
 }
 
 /** Hides the signup form */
-function hideSignUp() {
+function hideUserForm() {
     $(USER_FORM_CONTAINER_ID).hide();
 }
 
@@ -368,7 +370,7 @@ function createEmptyUser(avatar = "no-avatar.png") {
 function renderUserForm(user, isCreating, renderCallback = undefined) {
     let oldPasswordField = isCreating
         ? ""
-        : `<input class="form-control" name="OldPassword" id="oldPassword" placeholder="Ancien mot de passe" required="" value="" type="password">`;
+        : `<input class="form-control" name="OldPassword" id="${SIGNUP_OLD_PASSWORD_ID.substring(1)}" placeholder="Ancien mot de passe" required="" value="" type="password">`;
 
     let form = getContainer(USER_FORM_CONTAINER_ID);
     form.empty();
@@ -395,14 +397,14 @@ function renderUserForm(user, isCreating, renderCallback = undefined) {
             
                 ${oldPasswordField}
                 
-                <input class="form-control" name="Password" id="${SIGNUP_PASSWORD_ID.substring(1)}" placeholder="Mot de passe" required="" value="" type="password">
+                <input class="form-control" name="Password" id="${SIGNUP_PASSWORD_ID.substring(1)}" placeholder="Mot de passe" ${isCreating ? "required=''" : ""} value="" type="password">
                 <input 
                     class="form-control MatchedInput" 
                     name="PasswordVerify" 
                     matchedInputId="${SIGNUP_PASSWORD_ID.substring(1)}"
                     id="${SIGNUP_PASSWORD_VERIFY_ID.substring(1)}" 
                     placeholder="Vérification" 
-                    required="" 
+                    ${isCreating ? "required=''" : ""}
                     value="" 
                     type="password">
 
@@ -410,7 +412,7 @@ function renderUserForm(user, isCreating, renderCallback = undefined) {
             
             <fieldset class="form-control">
                 <legend>Nom</legend>
-                <input class="form-control" name="Name" id="${SIGNUP_NAME_ID.substring(1)}" placeholder="Nom" required="" value="" type="text">
+                <input class="form-control" name="Name" id="${SIGNUP_NAME_ID.substring(1)}" placeholder="Nom" required="" value="${user.Name}" type="text">
             </fieldset>
             
             <fieldset class="form-control">
@@ -488,17 +490,88 @@ async function createUserFormSubmit(event) {
 
     // If form is valid, show pop up for verification code
     showUserVerification(newUser.Id, undefined);
-
-    // Login
-    console.log("Login with:");
-    console.log(newUser);
 }
 
+//////////////////////////// User modification /////////////////////////////////////////////////////////////
+
+/** Shows the modification form */
+async function showModifyUser() {
+    let localUser = await Users_API.GetLocalUser();
+
+    if (Users_API.error)
+        return;
+
+    if (localUser === null)
+        return;
+
+    hidePosts();
+    $("#hiddenIcon").show();
+    $("#hiddenIcon2").show();
+    $('#abort').show();
+    setTitle("Modification");
+
+    renderUserForm(localUser, false, modifyUserCallback);
+}
+
+/** Called when rendering a form designated to modify a user */
 function modifyUserCallback(form) {
     form.append($(`<div><button id="${USER_FORM_DELETE_BUTTON_ID.substring(1)}">Effacer le compte</button></div>`));
-    form.find(USER_FORM_DELETE_BUTTON_ID).on("click", function () {
-        console.log("DELETE");
-    });
+    form.find(USER_FORM_DELETE_BUTTON_ID).on("click", deleteLocalUser);
+    form.find(USER_FORM_ID).on("submit", modifyUserFormSubmit);
+}
+
+/** Called when the user modification form is submitted */
+async function modifyUserFormSubmit(event) {
+    event.preventDefault();
+    let newUser = getFormData($(USER_FORM_ID));
+
+    // Remove extra fields
+    delete newUser.EmailVerify;
+    delete newUser.PasswordVerify;
+
+    await Users_API.Modify(newUser);
+
+    if (Users_API.error) {
+
+        if (Users_API.currentHttpError === "Wrong password.")
+        {
+            let oldPassword = $(SIGNUP_OLD_PASSWORD_ID);
+            oldPassword.attr("CustomErrorMessage", "L'ancien mot de passe n'est pas votre mot de passe actuel.")
+            oldPassword[0].setCustomValidity("ERROR");
+            oldPassword[0].reportValidity();
+        }
+        else
+            showError("Une erreur est survenue!");
+        return;
+    }
+
+    hideUserForm();
+    showPosts();
+}
+
+async function deleteLocalUser() {
+    let user = await Users_API.GetLocalUser();
+
+    if (Users_API.error)
+    {
+        showError("Une erreur est survenue!");
+        return;
+    }
+
+    if (user === null)
+        return;
+
+    await Users_API.Delete(user.Id);
+
+    if (Users_API.error)
+    {
+        showError("Une erreur est survenue!");
+        return;
+    }
+
+    hideUserForm();
+    showPosts();
+    logout();
 }
 
 //////////////////////////// User Verification /////////////////////////////////////////////////////////////
@@ -535,7 +608,7 @@ async function onUserVerificationConfirm(id, token) {
 
     if (Users_API.error) {
 
-        if (Users_API.currentHttpError === "Verification code does not match.")
+        if (Users_API.currentHttpError === "Verification code does not matched.")
             showError("Le code entré n'est pas valide.", "Veuillez vérifier si vous n'avez pas oublié un chiffre.");
         else
             showError("Un erreur est survenue!");
@@ -550,7 +623,7 @@ async function onUserVerificationConfirm(id, token) {
 /** Called when the user returns from the user verification popup */
 function onUserVerificationReturn() {
     hideUserVerification();
-    hideSignUp();
+    hideUserForm();
     showLogin();
 }
 
@@ -702,11 +775,11 @@ function removeWaitingGif() {
 const DROPDOWN_MENU_ID = "#DDMenu";
 
 /** Updates the dropdown menu with new items */
-function updateDropDownMenu() {
+async function updateDropDownMenu() {
     $(DROPDOWN_MENU_ID).empty();
 
     if (Users_API.IsUserLoggedIn())
-        addLoggedInItems();
+        await addLoggedInItems();
     else
         addLoggedOutItems();
 
@@ -717,7 +790,6 @@ function updateDropDownMenu() {
     allCategories.on("click", async function () {
         selectedCategory = "";
         await showPosts(true);
-        updateDropDownMenu();
     });
 
     addDropdownDivider();
@@ -729,7 +801,6 @@ function updateDropDownMenu() {
         cat.on("click", async function () {
             selectedCategory = $(this).text().trim();
             await showPosts(true);
-            updateDropDownMenu();
         });
     });
 
@@ -739,6 +810,11 @@ function updateDropDownMenu() {
     about.on("click", showAbout);
 }
 
+/** Adds an HTML element on the dropdown menu */
+function addDropdownElement(element) {
+    $(DROPDOWN_MENU_ID).append(element);
+}
+
 /** Adds an item on the dropdown menu */
 function addDropdownItem(text, id, classes) {
     let item = $(`
@@ -746,7 +822,7 @@ function addDropdownItem(text, id, classes) {
             <i class="menuIcon mx-2 ${classes}"></i> ${text}
         </div>
     `);
-    $(DROPDOWN_MENU_ID).append(item);
+    addDropdownElement(item);
     return item;
 }
 
@@ -764,10 +840,24 @@ function addLoggedOutItems() {
 }
 
 /** Adds the dropdown items for a logged-in user */
-function addLoggedInItems() {
-    let userInfo = addDropdownItem("USER INFO MISSING", "userInfoCmd", "");
+async function addLoggedInItems() {
+    let user = await Users_API.GetLocalUser();
+
+    let userInfo = $(`
+        <div style="display: flex; height: 3em; align-items: center; gap: 0.5em;">
+            <div style="flex: 3;">
+                <div style="background-position: center; background-size: cover; background-image: url('${user.Avatar}'); height: 48px; width: 48px; border-radius: 2em; margin: auto;"></div>
+            </div>
+            <div style="flex: 7; font-weight: bold;">${user.Name}</div>
+        </div>
+    `);
+    addDropdownElement(userInfo);
+
     addDropdownDivider();
+
     let modifyUser = addDropdownItem("Modifier votre profil", "modifyUserCmd", "fa-solid fa-user-pen");
+    modifyUser.on("click", showModifyUser);
+
     let logoutUser = addDropdownItem("Déconnexion", "logoutUserCmd", "fa-solid fa-right-from-bracket");
     logoutUser.on("click", logout);
 }

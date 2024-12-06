@@ -5,6 +5,7 @@ import * as utilities from "../utilities.js";
 import Gmail from "../gmail.js";
 import Controller from './Controller.js';
 import AccessControl from '../accessControl.js';
+import TokensManager from "../tokensManager.js";
 
 export default class AccountsController extends Controller {
     constructor(HttpContext) {
@@ -56,12 +57,6 @@ export default class AccountsController extends Controller {
 
         user = this.repository.get(user.Id);
 
-        // Parse verify code
-        user.Verified = user.VerifyCode === "verified";
-        console.log(user.VerifyCode);
-        console.log(user.VerifyCode === "verified");
-        delete user.VerifyCode;
-
         let newToken = TokenManager.create(user);
         this.HttpContext.response.created(newToken);
     }
@@ -93,7 +88,7 @@ export default class AccountsController extends Controller {
 
         // If tokens mismatch
         if (tokenFound.Access_token !== token) {
-            this.HttpContext.response.badRequest("You don't have the rights to end this connection.");
+            this.HttpContext.response.unAuthorized();
             return;
         }
 
@@ -168,7 +163,7 @@ export default class AccountsController extends Controller {
             let id = this.HttpContext.path.params.Id;
             let email = this.HttpContext.path.params.Email;
             if (id && email) {
-                let prototype = { Id: id, Email: email };
+                let prototype = {Id: id, Email: email};
                 this.HttpContext.response.JSON(this.repository.checkConflict(prototype));
             } else
                 this.HttpContext.response.JSON(false);
@@ -191,6 +186,29 @@ export default class AccountsController extends Controller {
 
         let elements = this.repository.findByFilter((e) => e.Email === email);
         this.HttpContext.response.JSON(elements.length > 0);
+    }
+
+    // GET: /accounts/fromToken?token=...
+    fromtoken() {
+        let accessToken = this.HttpContext.path.params.token;
+
+        // If token not provided
+        if (!accessToken) {
+            this.HttpContext.response.badRequest("No token was provided.");
+            return;
+        }
+
+        let token = TokensManager.findAccesToken(accessToken, false);
+
+        if (token == null) {
+            this.HttpContext.response.JSON(null);
+            return;
+        }
+
+        let boundUser = this.repository.get(token.User.Id);
+        delete boundUser.Password;
+
+        this.HttpContext.response.JSON(boundUser);
     }
 
     // POST: account/register body payload[{"Id": 0, "Name": "...", "Email": "...", "Password": "..."}]
@@ -251,46 +269,86 @@ export default class AccountsController extends Controller {
     // PUT:account/modify body payload[{"Id": 0, "Name": "...", "Email": "...", "Password": "..."}]
     modify(user) {
         // empty asset members imply no change and there values will be taken from the stored record
-        if (AccessControl.writeGranted(this.HttpContext.authorizations, AccessControl.user())) {
-            if (this.repository != null) {
-                user.Created = utilities.nowInSeconds();
-                let foundedUser = this.repository.findByField("Id", user.Id);
-                if (foundedUser != null) {
-                    user.Authorizations = foundedUser.Authorizations; // user cannot change its own authorizations
-                    if (user.Password == '') { // password not changed
-                        user.Password = foundedUser.Password;
-                    }
-                    user.Authorizations = foundedUser.Authorizations;
-                    if (user.Email != foundedUser.Email) {
-                        user.VerifyCode = utilities.makeVerifyCode(6);
-                        this.sendVerificationEmail(user);
-                    } else {
-                        user.VerifyCode = foundedUser.VerifyCode;
-                    }
-                    this.repository.update(user.Id, user);
-                    let updatedUser = this.repository.get(user.Id); // must get record user.id with binded data
-
-                    if (this.repository.model.state.isValid) {
-                        this.HttpContext.response.JSON(updatedUser, this.repository.ETag);
-                    } else {
-                        if (this.repository.model.state.inConflict)
-                            this.HttpContext.response.conflict(this.repository.model.state.errors);
-                        else
-                            this.HttpContext.response.badRequest(this.repository.model.state.errors);
-                    }
-                } else
-                    this.HttpContext.response.notFound();
-            } else
-                this.HttpContext.response.notImplemented();
-        } else
+        if (!AccessControl.writeGranted(this.HttpContext.authorizations, AccessControl.user())) {
             this.HttpContext.response.unAuthorized();
+            return;
+        }
+
+        if (this.repository === null) {
+            this.HttpContext.response.notImplemented();
+            return;
+        }
+
+        let foundedUser = this.repository.findByField("Id", user.Id);
+
+        if (foundedUser === null) {
+            this.HttpContext.response.notFound();
+            return;
+        }
+
+        if (user.OldPassword !== foundedUser.Password) {
+            this.HttpContext.response.wrongPassword("Wrong password.");
+            return;
+        }
+        delete user.OldPassword;
+
+        user.Created = utilities.nowInSeconds();
+
+        // user cannot change its own authorizations
+        user.Authorizations = foundedUser.Authorizations;
+
+        // password not changed
+        if (user.Password == '')
+            user.Password = foundedUser.Password;
+
+        if (user.Email != foundedUser.Email) {
+            user.VerifyCode = utilities.makeVerifyCode(6);
+            this.sendVerificationEmail(user);
+        } else
+            user.VerifyCode = foundedUser.VerifyCode;
+
+        this.repository.update(user.Id, user);
+        let updatedUser = this.repository.get(user.Id); // must get record user.id with binded data
+
+        if (!this.repository.model.state.isValid) {
+            if (this.repository.model.state.inConflict)
+                this.HttpContext.response.conflict(this.repository.model.state.errors);
+            else
+                this.HttpContext.response.badRequest(this.repository.model.state.errors);
+            return;
+        }
+
+        this.HttpContext.response.JSON(updatedUser, this.repository.ETag);
     }
 
     // GET:account/remove/id
-    remove(id) { // warning! this is not an API endpoint 
-        // todo make sure that the requester has legitimity to delete ethier itself or its an admin
-        if (AccessControl.writeGrantedAdminOrOwner(this.HttpContext.authorizations, this.requiredAuthorizations, id)) {
-            // todo
+    remove(id) {
+
+        if (id === undefined) {
+            this.HttpContext.response.badRequest("No id was provided.");
+            return;
         }
+
+        if (this.HttpContext.user.Id !== id && !AccessControl.writeGrantedAdminOrOwner(this.HttpContext.authorizations, this.requiredAuthorizations, id)) {
+            this.HttpContext.response.unAuthorized();
+            return;
+        }
+
+        if (this.repository === null) {
+            this.HttpContext.response.notImplemented();
+            return;
+        }
+
+        this.repository.remove(id);
+
+        if (!this.repository.model.state.isValid) {
+            if (this.repository.model.state.inConflict)
+                this.HttpContext.response.conflict(this.repository.model.state.errors);
+            else
+                this.HttpContext.response.badRequest(this.repository.model.state.errors);
+            return;
+        }
+
+        this.HttpContext.response.ok();
     }
 }
