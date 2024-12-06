@@ -9,8 +9,10 @@ import APIServer from "./APIServer.js";
 import RouteRegister from './routeRegister.js';
 
 RouteRegister.add('GET', 'Bookmarks', 'list');
-RouteRegister.add('GET', 'accounts');
 
+RouteRegister.add('POST', 'posts', 'togglelike');
+
+RouteRegister.add('GET', 'accounts');
 RouteRegister.add('GET', 'accounts', 'exists'); // Checks if a given email already exists
 RouteRegister.add('POST', 'accounts', 'register'); // Signs up a user to the system
 RouteRegister.add('GET', 'accounts', 'verify'); // Verifies a user to the system

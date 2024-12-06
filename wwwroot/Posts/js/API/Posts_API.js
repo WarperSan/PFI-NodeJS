@@ -107,4 +107,23 @@ class Posts_API {
             });
         });
     }
+
+    static ToggleLike(idPost, idUser) {
+        Posts_API.initHttpState();
+        return new Promise(resolve => {
+            $.ajax({
+                url: this.Host_URL() + "/posts/togglelike",
+                type: "POST",
+                contentType: 'application/json',
+                data: JSON.stringify({ IdPost: idPost, IdUser: idUser }),
+                complete: () => {
+                    resolve(true);
+                },
+                error: (xhr) => {
+                    Posts_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
+            });
+        });
+    }
 }

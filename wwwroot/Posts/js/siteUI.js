@@ -817,13 +817,21 @@ function addPostActionIcons(localUser, post, iconsPanel) {
     let isLogged = localUser !== null;
     let isAuthor = isLogged && localUser.Id === post.Author.Id;
 
+    let likes = post.Likes ?? [];
+
     let likeIcon = $(`
-        <span class="likeCmd cmdIconSmall fa-regular fa-thumbs-up">${post.Likes ?? 0}</span>
+        <span class="likeCmd cmdIconSmall fa-regular fa-thumbs-up">${likes.length}</span>
     `);
     iconsPanel.append(likeIcon);
 
-    if (isLogged && !isAuthor)
+    if (isLogged)
     {
+        if (post.Likes.indexOf(localUser.Id) !== -1)
+        {
+            likeIcon.addClass('fa-solid');
+            likeIcon.removeClass("fa-regular");
+        }
+
         likeIcon.on("click", function () {
             onPostLiked(post);
         });
@@ -849,7 +857,17 @@ function addPostActionIcons(localUser, post, iconsPanel) {
 }
 
 async function onPostLiked(post) {
-    console.log("LIKE");
+    let localUser = await Users_API.GetLocalUser();
+
+    if (Users_API.error || localUser === null)
+        return;
+
+    await Posts_API.ToggleLike(post.Id, localUser.Id);
+
+    if (Posts_API.error)
+        return;
+
+    await postsPanel.update(false);
 }
 
 /** Sets the author information of the given post */
