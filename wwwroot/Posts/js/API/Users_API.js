@@ -81,12 +81,19 @@ class Users_API {
     static Logout(id) {
         Users_API.initHttpState();
         return new Promise(resolve => {
+            if (!this.IsUserLoggedIn())
+            {
+                resolve(false);
+                return;
+            }
+
             let token = this.#GetToken();
+            sessionStorage.removeItem(LOCAL_USER_TOKEN_KEY);
+
             $.ajax({
                 url: this.Host_URL() + `/accounts/logout?id=${id}&token=${token}`,
                 type: "GET",
                 success: (data) => {
-                    sessionStorage.removeItem(LOCAL_USER_TOKEN_KEY);
                     resolve(data);
                 },
                 error: (xhr) => {
@@ -126,7 +133,8 @@ class Users_API {
 
     /** Checks if the local user is logged in */
     static IsUserLoggedIn() {
-        return this.#GetToken() !== null;
+        let token = this.#GetToken();
+        return token !== null && token !== "undefined";
     }
 
     /** Fetches the local user */

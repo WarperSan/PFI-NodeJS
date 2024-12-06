@@ -54,6 +54,7 @@ function installKeywordsOnkeyupEvent() {
         showPosts(true);
     });
 }
+
 function cleanSearchKeywords() {
     /* Keep only keywords of 3 characters or more */
     let keywords = $("#searchKeys").val().trim().split(' ');
@@ -63,27 +64,28 @@ function cleanSearchKeywords() {
     });
     $("#searchKeys").val(cleanedKeywords.trim());
 }
+
 function showSearchIcon() {
     $("#hiddenIcon").hide();
     $("#showSearch").show();
     if (showKeywords) {
         $("#searchKeys").show();
-    }
-    else
+    } else
         $("#searchKeys").hide();
 }
+
 function hideSearchIcon() {
     $("#hiddenIcon").show();
     $("#showSearch").hide();
     $("#searchKeys").hide();
 }
+
 function toogleShowKeywords() {
     showKeywords = !showKeywords;
     if (showKeywords) {
         $("#searchKeys").show();
         $("#searchKeys").focus();
-    }
-    else {
+    } else {
         $("#searchKeys").hide();
         showPosts(true);
     }
@@ -106,12 +108,14 @@ function intialView() {
     $(USER_FORM_CONTAINER_ID).hide();
     showSearchIcon();
 }
+
 async function showPosts(reset = false) {
     intialView();
     setTitle("Fil de nouvelles");
     periodic_Refresh_paused = false;
     await postsPanel.show(reset);
 }
+
 function hidePosts() {
     postsPanel.hide();
     hideSearchIcon();
@@ -119,12 +123,14 @@ function hidePosts() {
     $('#menu').hide();
     periodic_Refresh_paused = true;
 }
+
 function showForm() {
     hidePosts();
     $('#form').show();
     $('#commit').show();
     $('#abort').show();
 }
+
 function showError(message, details = "") {
     hidePosts();
     $('#form').hide();
@@ -147,16 +153,19 @@ function showCreatePostForm() {
     setTitle("Ajout de nouvelle");
     renderPostForm();
 }
+
 function showEditPostForm(id) {
     showForm();
     setTitle("Modification");
     renderEditPostForm(id);
 }
+
 function showDeletePostForm(id) {
     showForm();
     setTitle("Retrait");
     renderDeletePostForm(id);
 }
+
 function showAbout() {
     hidePosts();
     $("#hiddenIcon").show();
@@ -262,23 +271,20 @@ function onLoginSuccess(token) {
     // Check if token acquired
     let accessToken = token.Access_token;
 
-    if (accessToken === null)
-    {
+    if (accessToken === null) {
         showError("Une erreur est survenue! ");
         return;
     }
 
     let user = token.User;
 
-    if (user === null)
-    {
+    if (user === null) {
         showError("Une erreur est survenue! ");
         return;
     }
 
     // If user already verified, skip
-    if (user.Verified)
-    {
+    if (user.Verified) {
         onCompleteLogin(accessToken, user);
         return;
     }
@@ -319,7 +325,9 @@ function onLoginError(errorMessage) {
 
 /** Logs out the connected user */
 async function logout() {
-    await Users_API.Logout("2a54c560-b357-11ef-9a65-37edaf01c440");
+    let user = await Users_API.GetLocalUser();
+    await Users_API.Logout(user?.Id);
+
     updateDropDownMenu();
 }
 
@@ -533,14 +541,12 @@ async function modifyUserFormSubmit(event) {
 
     if (Users_API.error) {
 
-        if (Users_API.currentHttpError === "Wrong password.")
-        {
+        if (Users_API.currentHttpError === "Wrong password.") {
             let oldPassword = $(SIGNUP_OLD_PASSWORD_ID);
             oldPassword.attr("CustomErrorMessage", "L'ancien mot de passe n'est pas votre mot de passe actuel.")
             oldPassword[0].setCustomValidity("ERROR");
             oldPassword[0].reportValidity();
-        }
-        else
+        } else
             showError("Une erreur est survenue!");
         return;
     }
@@ -552,8 +558,7 @@ async function modifyUserFormSubmit(event) {
 async function deleteLocalUser() {
     let user = await Users_API.GetLocalUser();
 
-    if (Users_API.error)
-    {
+    if (Users_API.error) {
         showError("Une erreur est survenue!");
         return;
     }
@@ -563,8 +568,7 @@ async function deleteLocalUser() {
 
     await Users_API.Delete(user.Id);
 
-    if (Users_API.error)
-    {
+    if (Users_API.error) {
         showError("Une erreur est survenue!");
         return;
     }
@@ -655,8 +659,8 @@ function start_Periodic_Refresh() {
         },
         periodicRefreshPeriod * 1000);
 }
+
 async function renderPosts(queryString) {
-    let endOfData = false;
     queryString += "&sort=date,desc";
     compileCategories();
     if (selectedCategory != "") queryString += "&category=" + selectedCategory;
@@ -667,52 +671,31 @@ async function renderPosts(queryString) {
     }
     addWaitingGif();
     let response = await Posts_API.Get(queryString);
-    if (!Posts_API.error) {
-        currentETag = response.ETag;
-        currentPostsCount = parseInt(currentETag.split("-")[0]);
-        let Posts = response.data;
-        if (Posts.length > 0) {
-            Posts.forEach(Post => {
-                postsPanel.append(renderPost(Post));
-            });
-        } else
-            endOfData = true;
-        linefeeds_to_Html_br(".postText");
-        highlightKeywords();
-        attach_Posts_UI_Events_Callback();
-    } else {
+
+    if (Posts_API.error) {
         showError(Posts_API.currentHttpError);
+        return false;
     }
+
+    let endOfData = false;
+
+    currentETag = response.ETag;
+    currentPostsCount = parseInt(currentETag.split("-")[0]);
+    let Posts = response.data;
+    if (Posts.length > 0) {
+        Posts.forEach(Post => {
+            postsPanel.append(renderPost(Post));
+        });
+    } else
+        endOfData = true;
+    linefeeds_to_Html_br(".postText");
+    highlightKeywords();
+    attach_Posts_UI_Events_Callback();
+
     removeWaitingGif();
     return endOfData;
 }
-function renderPost(post, loggedUser) {
-    let date = convertToFrenchDate(UTC_To_Local(post.Date));
-    let crudIcon =
-        `
-        <span class="editCmd cmdIconSmall fa fa-pencil" postId="${post.Id}" title="Modifier nouvelle"></span>
-        <span class="deleteCmd cmdIconSmall fa fa-trash" postId="${post.Id}" title="Effacer nouvelle"></span>
-        `;
 
-    return $(`
-        <div class="post" id="${post.Id}">
-            <div class="postHeader">
-                ${post.Category}
-                ${crudIcon}
-            </div>
-            <div class="postTitle"> ${post.Title} </div>
-            <img class="postImage" src='${post.Image}'/>
-            <div class="postDate"> ${date} </div>
-            <div postId="${post.Id}" class="postTextContainer hideExtra">
-                <div class="postText" >${post.Text}</div>
-            </div>
-            <div class="postfooter">
-                <span postId="${post.Id}" class="moreText cmdIconXSmall fa fa-angle-double-down" title="Afficher la suite"></span>
-                <span postId="${post.Id}" class="lessText cmdIconXSmall fa fa-angle-double-up" title="Réduire..."></span>
-            </div>         
-        </div>
-    `);
-}
 async function compileCategories() {
     categories = [];
     let response = await Posts_API.GetQuery("?fields=category&sort=category");
@@ -729,6 +712,7 @@ async function compileCategories() {
         }
     }
 }
+
 function attach_Posts_UI_Events_Callback() {
 
     linefeeds_to_Html_br(".postText");
@@ -759,15 +743,77 @@ function attach_Posts_UI_Events_Callback() {
         $(`.postTextContainer[postId=${$(this).attr("postId")}]`).removeClass('showExtra');
     })
 }
+
 function addWaitingGif() {
     clearTimeout(waiting);
     waiting = setTimeout(() => {
         postsPanel.itemsPanel.append($("<div id='waitingGif' class='waitingGifcontainer'><img class='waitingGif' src='Loading_icon.gif' /></div>'"));
     }, waitingGifTrigger)
 }
+
 function removeWaitingGif() {
     clearTimeout(waiting);
     $("#waitingGif").remove();
+}
+
+const POST_AUTHOR_AVATAR_CLASS = ".postAuthorAvatar";
+const POST_AUTHOR_NAME_CLASS = ".postAuthorName";
+
+/** Renders the given post for the given user */
+function renderPost(post, loggedUser) {
+    //console.log(post);
+    let date = convertToFrenchDate(UTC_To_Local(post.Date));
+    let crudIcon =
+        `
+        <span class="editCmd cmdIconSmall fa fa-pencil" postId="${post.Id}" title="Modifier nouvelle"></span>
+        <span class="deleteCmd cmdIconSmall fa fa-trash" postId="${post.Id}" title="Effacer nouvelle"></span>
+        `;
+
+    let render = $(`
+        <div class="post" id="${post.Id}">
+            <div class="postHeader">
+                ${post.Category}
+                ${crudIcon}
+            </div>
+            <div class="postTitle"> ${post.Title} </div>
+            <img class="postImage" src='${post.Image}'/>
+            <div style="display: flex;">
+                <div class="postAuthorSection">
+                    <div class="${POST_AUTHOR_AVATAR_CLASS.substring(1)}"></div>
+                    <div class="${POST_AUTHOR_NAME_CLASS.substring(1)}"></div>
+                </div>
+                <div class="postDate"> ${date} </div>
+            </div>
+            <div postId="${post.Id}" class="postTextContainer hideExtra">
+                <div class="postText" >${post.Text}</div>
+            </div>
+            <div class="postfooter">
+                <span postId="${post.Id}" class="moreText cmdIconXSmall fa fa-angle-double-down" title="Afficher la suite"></span>
+                <span postId="${post.Id}" class="lessText cmdIconXSmall fa fa-angle-double-up" title="Réduire..."></span>
+            </div>         
+        </div>
+    `);
+
+    setPostAuthor(render, post.Author);
+
+    return render;
+}
+
+/** Sets the author information of the given post */
+function setPostAuthor(element, author) {
+
+    let name = "???";
+    let avatar = "no-avatar.png";
+
+    if (author)
+    {
+        name = author.Name;
+        avatar = author.Avatar;
+    }
+
+    element.find(POST_AUTHOR_AVATAR_CLASS).css("background-image", `url(${avatar})`);
+    element.find(POST_AUTHOR_AVATAR_CLASS).css("background-image", `url(${avatar})`);
+    element.find(POST_AUTHOR_NAME_CLASS).text(name);
 }
 
 //////////////////////////// Dropdown menu /////////////////////////////////////////////////////////////
@@ -846,9 +892,9 @@ async function addLoggedInItems() {
     let userInfo = $(`
         <div style="display: flex; height: 3em; align-items: center; gap: 0.5em;">
             <div style="flex: 3;">
-                <div style="background-position: center; background-size: cover; background-image: url('${user.Avatar}'); height: 48px; width: 48px; border-radius: 2em; margin: auto;"></div>
+                <div style="background-position: center; background-size: cover; background-image: url('${user?.Avatar}'); height: 48px; width: 48px; border-radius: 2em; margin: auto;"></div>
             </div>
-            <div style="flex: 7; font-weight: bold;">${user.Name}</div>
+            <div style="flex: 7; font-weight: bold;">${user?.Name}</div>
         </div>
     `);
     addDropdownElement(userInfo);
@@ -872,6 +918,7 @@ function linefeeds_to_Html_br(selector) {
         postText.html(str.replace(regex, "<br>"));
     })
 }
+
 function highlight(text, elem) {
     text = text.trim();
     if (text.length >= minKeywordLenth) {
@@ -892,6 +939,7 @@ function highlight(text, elem) {
         elem.innerHTML = innerHTML;
     }
 }
+
 function highlightKeywords() {
     if (showKeywords) {
         let keywords = $("#searchKeys").val().split(' ');
@@ -927,6 +975,7 @@ async function renderEditPostForm(id) {
     }
     removeWaitingGif();
 }
+
 async function renderDeletePostForm(id) {
     let response = await Posts_API.Get(id)
     if (!Posts_API.error) {
@@ -949,8 +998,7 @@ async function renderDeletePostForm(id) {
                 await Posts_API.Delete(post.Id);
                 if (!Posts_API.error) {
                     await showPosts();
-                }
-                else {
+                } else {
                     console.log(Posts_API.currentHttpError)
                     showError("Une erreur est survenue!");
                 }
@@ -965,6 +1013,7 @@ async function renderDeletePostForm(id) {
     } else
         showError(Posts_API.currentHttpError);
 }
+
 function newPost() {
     let Post = {};
     Post.Id = 0;
@@ -974,7 +1023,16 @@ function newPost() {
     Post.Category = "";
     return Post;
 }
-function renderPostForm(post = null) {
+
+async function renderPostForm(post = null) {
+    let localUser = await Users_API.GetLocalUser();
+
+    if (Users_API.error)
+    {
+        showError("Une erreur est survenue!");
+        return;
+    }
+
     let create = post == null;
     if (create) post = newPost();
     $("#form").show();
@@ -982,6 +1040,7 @@ function renderPostForm(post = null) {
     $("#form").append(`
         <form class="form" id="postForm">
             <input type="hidden" name="Id" value="${post.Id}"/>
+            <input type="hidden" name="CreatedBy" value="${localUser.Id}"/>
              <input type="hidden" name="Date" value="${post.Date}"/>
             <label for="Category" class="form-label">Catégorie </label>
             <input 
@@ -1049,14 +1108,14 @@ function renderPostForm(post = null) {
         if (!Posts_API.error) {
             await showPosts();
             postsPanel.scrollToElem(post.Id);
-        }
-        else
+        } else
             showError("Une erreur est survenue! ", Posts_API.currentHttpError);
     });
     $('#cancel').on("click", async function () {
         await showPosts();
     });
 }
+
 function getFormData($form) {
     // prevent html injections
     const removeTag = new RegExp("(<[a-zA-Z0-9]+>)|(</[a-zA-Z0-9]+>)", "g");
@@ -1067,4 +1126,5 @@ function getFormData($form) {
     });
     return jsonObject;
 }
+
 Init_UI();

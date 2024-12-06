@@ -132,29 +132,29 @@
     border-radius: 5px;
     margin-top: 10px;
     border: 1px solid #ccc;
-    padding:4px;
+    padding: 4px;
     background-color: antiquewhite;
-    display:none;
+    display: none;
 }
 
 .commentsHeader {
-    display:grid;
+    display: grid;
     grid-template-columns: auto 30px;
     align-items: center;
 }
 
-.commentEditor{
-    display:none;
+.commentEditor {
+    display: none;
 }
 
 .lessText {
-    display:none;
+    display: none;
 }
 
 .commentEditorLayout {
     padding: 4px;
-    display:flex;
-    gap:8px;
+    display: flex;
+    gap: 8px;
 }
 
 .comments {
@@ -163,4 +163,30 @@
     overflow-y: scroll;
     overflow-y: auto;
     scrollbar-gutter: stable;
+}
+
+/* AUTHOR */
+.postAuthorSection {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+
+    flex: 3;
+
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+.postAuthorAvatar {
+    width: 48px;
+    height: 48px;
+
+    background-position: center;
+    background-size: cover;
+    border-radius: 2em;
+}
+
+
+.postAuthorName {
+    font-weight: bold;
 }

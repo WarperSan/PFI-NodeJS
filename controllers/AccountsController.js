@@ -6,6 +6,7 @@ import Gmail from "../gmail.js";
 import Controller from './Controller.js';
 import AccessControl from '../accessControl.js';
 import TokensManager from "../tokensManager.js";
+import PostModelsController from "./PostsController.js";
 
 export default class AccountsController extends Controller {
     constructor(HttpContext) {
@@ -213,25 +214,28 @@ export default class AccountsController extends Controller {
 
     // POST: account/register body payload[{"Id": 0, "Name": "...", "Email": "...", "Password": "..."}]
     register(user) {
-        if (this.repository != null) {
-            user.Created = utilities.nowInSeconds();
-            let verifyCode = utilities.makeVerifyCode(6);
-            user.VerifyCode = verifyCode;
-            user.Authorizations = AccessControl.user();
-            let newUser = this.repository.add(user);
-            if (this.repository.model.state.isValid) {
 
-                this.HttpContext.response.JSON(newUser);
-
-                this.sendVerificationEmail(newUser);
-            } else {
-                if (this.repository.model.state.inConflict)
-                    this.HttpContext.response.conflict(this.repository.model.state.errors);
-                else
-                    this.HttpContext.response.badRequest(this.repository.model.state.errors);
-            }
-        } else
+        if (this.repository === null) {
             this.HttpContext.response.notImplemented();
+            return;
+        }
+
+        user.Created = utilities.nowInSeconds();
+        let verifyCode = utilities.makeVerifyCode(6);
+        user.VerifyCode = verifyCode;
+        user.Authorizations = AccessControl.user();
+        let newUser = this.repository.add(user);
+
+        if (!this.repository.model.state.isValid) {
+            if (this.repository.model.state.inConflict)
+                this.HttpContext.response.conflict(this.repository.model.state.errors);
+            else
+                this.HttpContext.response.badRequest(this.repository.model.state.errors);
+            return;
+        }
+
+        this.HttpContext.response.JSON(newUser);
+        this.sendVerificationEmail(newUser);
     }
 
     promote(user) {
@@ -308,6 +312,7 @@ export default class AccountsController extends Controller {
             user.VerifyCode = foundedUser.VerifyCode;
 
         this.repository.update(user.Id, user);
+        new PostModelsController(null).repository.newETag(); // Make post repository dirty
         let updatedUser = this.repository.get(user.Id); // must get record user.id with binded data
 
         if (!this.repository.model.state.isValid) {
@@ -339,6 +344,7 @@ export default class AccountsController extends Controller {
             return;
         }
 
+        new PostModelsController(null).deleteFromAuthor(id);
         this.repository.remove(id);
 
         if (!this.repository.model.state.isValid) {
