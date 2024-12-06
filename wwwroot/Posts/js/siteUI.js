@@ -66,7 +66,7 @@ function cleanSearchKeywords() {
 }
 
 function showSearchIcon() {
-    $("#hiddenIcon").hide();
+    //$("#hiddenIcon").hide();
     $("#showSearch").show();
     if (showKeywords) {
         $("#searchKeys").show();
@@ -93,9 +93,21 @@ function toogleShowKeywords() {
 
 /////////////////////////// Views management ////////////////////////////////////////////////////////////
 
-function intialView() {
-    $("#createPost").show();
-    $("#hiddenIcon").hide();
+async function initialView() {
+
+    let local = await Users_API.GetLocalUser();
+
+    if (local !== null && local.CanWrite)
+    {
+        $("#createPost").show();
+        $("#hiddenIcon").hide();
+    }
+    else
+    {
+        $("#createPost").hide();
+        $("#hiddenIcon").show();
+    }
+
     $("#hiddenIcon2").hide();
     $('#menu').show();
     $('#commit').hide();
@@ -110,7 +122,7 @@ function intialView() {
 }
 
 async function showPosts(reset = false) {
-    intialView();
+    await initialView();
     setTitle("Fil de nouvelles");
     periodic_Refresh_paused = false;
     await postsPanel.show(reset);
@@ -289,7 +301,7 @@ function onLoginSuccess(token) {
         return;
     }
 
-    showUserVerification(user.Id, accessToken);
+    showUserVerification(user.Id);
 }
 
 /** Called when the login process is complete */
@@ -328,7 +340,9 @@ async function logout() {
     let user = await Users_API.GetLocalUser();
     await Users_API.Logout(user?.Id);
 
+    initialView();
     updateDropDownMenu();
+    await postsPanel.show(false);
 }
 
 //////////////////////////// Sign up /////////////////////////////////////////////////////////////
@@ -497,7 +511,7 @@ async function createUserFormSubmit(event) {
     }
 
     // If form is valid, show pop up for verification code
-    showUserVerification(newUser.Id, undefined);
+    showUserVerification(newUser.Id);
 }
 
 //////////////////////////// User modification /////////////////////////////////////////////////////////////
@@ -586,14 +600,14 @@ const USER_VERIFICATION_RETURN_ID = "#returnToLogin";
 const USER_VERIFICATION_CODE_INPUT_ID = "#verificationCode";
 
 /** Shows the user verification popup */
-function showUserVerification(id, token) {
+function showUserVerification(id) {
     $(USER_VERIFICATION_POPUP_ID).modal('show');
 
     $(USER_VERIFICATION_CONFIRM_ID).off('click');
     $(USER_VERIFICATION_RETURN_ID).off('click');
 
     $(USER_VERIFICATION_CONFIRM_ID).on('click', function () {
-        onUserVerificationConfirm(id, token);
+        onUserVerificationConfirm(id);
     });
     $(USER_VERIFICATION_RETURN_ID).on('click', onUserVerificationReturn);
 }
@@ -604,9 +618,11 @@ function hideUserVerification() {
 }
 
 /** Called when the user confirms the user verification popup */
-async function onUserVerificationConfirm(id, token) {
+async function onUserVerificationConfirm(id) {
     let code = $(USER_VERIFICATION_CODE_INPUT_ID).val();
     code = code.trim();
+
+    $(USER_VERIFICATION_CODE_INPUT_ID).val("");
 
     let user = await Users_API.Verify(id, code);
 
@@ -621,7 +637,7 @@ async function onUserVerificationConfirm(id, token) {
 
     hideUserVerification();
 
-    onCompleteLogin(token, user);
+    onCompleteLogin(user.token, user);
 }
 
 /** Called when the user returns from the user verification popup */
@@ -683,8 +699,9 @@ async function renderPosts(queryString) {
     currentPostsCount = parseInt(currentETag.split("-")[0]);
     let Posts = response.data;
     if (Posts.length > 0) {
+        let localUser = await Users_API.GetLocalUser();
         Posts.forEach(Post => {
-            postsPanel.append(renderPost(Post));
+            postsPanel.append(renderPost(Post, localUser));
         });
     } else
         endOfData = true;
@@ -761,13 +778,8 @@ const POST_AUTHOR_NAME_CLASS = ".postAuthorName";
 
 /** Renders the given post for the given user */
 function renderPost(post, loggedUser) {
-    //console.log(post);
     let date = convertToFrenchDate(UTC_To_Local(post.Date));
-    let crudIcon =
-        `
-        <span class="editCmd cmdIconSmall fa fa-pencil" postId="${post.Id}" title="Modifier nouvelle"></span>
-        <span class="deleteCmd cmdIconSmall fa fa-trash" postId="${post.Id}" title="Effacer nouvelle"></span>
-        `;
+    let crudIcon = getPostActionIcons(loggedUser, post);
 
     let render = $(`
         <div class="post" id="${post.Id}">
@@ -797,6 +809,22 @@ function renderPost(post, loggedUser) {
     setPostAuthor(render, post.Author);
 
     return render;
+}
+
+/** Renders the post actions depending on the local user and the given post */
+function getPostActionIcons(localUser, post) {
+    let author = post.Author;
+
+    if (localUser === null || author === null)
+        return "";
+
+    if (localUser.Id !== author.Id)
+        return "";
+
+    return `
+        <span class="editCmd cmdIconSmall fa fa-pencil" postId="${post.Id}" title="Modifier nouvelle"></span>
+        <span class="deleteCmd cmdIconSmall fa fa-trash" postId="${post.Id}" title="Effacer nouvelle"></span>
+    `;
 }
 
 /** Sets the author information of the given post */
