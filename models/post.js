@@ -20,6 +20,7 @@ export default class Post extends Model {
         instance = super.bindExtraData(instance);
 
         instance.Author = new PostModelsController(null).author(instance.Id);
+        instance.Likes = 0; // Count
 
         return instance;
     }

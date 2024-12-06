@@ -9,9 +9,7 @@
     display: none;
 }
 
-.post:hover .cmdIconSmall {
-    display: block;
-}
+
 
 .PostdeleteForm {
     margin: 20px;
@@ -39,11 +37,27 @@
 
 .postHeader {
     color: blue;
-    display: grid;
-    grid-template-columns: auto 30px 30px;
+    display: flex;
     align-items: center;
     height: 34px;
     text-transform: uppercase;
+}
+
+.postIcons {
+    width: 100%;
+    text-align: end;
+}
+
+.postIcons .cmdIconSmall {
+    margin-right: 10px;
+}
+
+.likeCmd {
+    user-select: none;
+}
+
+.likeCmd:before {
+    margin-right: 5px;
 }
 
 .postTitle {

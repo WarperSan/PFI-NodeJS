@@ -775,17 +775,17 @@ function removeWaitingGif() {
 
 const POST_AUTHOR_AVATAR_CLASS = ".postAuthorAvatar";
 const POST_AUTHOR_NAME_CLASS = ".postAuthorName";
+const POST_ICONS_CLASS = ".postIcons";
 
 /** Renders the given post for the given user */
 function renderPost(post, loggedUser) {
     let date = convertToFrenchDate(UTC_To_Local(post.Date));
-    let crudIcon = getPostActionIcons(loggedUser, post);
 
     let render = $(`
         <div class="post" id="${post.Id}">
             <div class="postHeader">
-                ${post.Category}
-                ${crudIcon}
+                <div>${post.Category}</div>
+                <div class="${POST_ICONS_CLASS.substring(1)}"></div>
             </div>
             <div class="postTitle"> ${post.Title} </div>
             <img class="postImage" src='${post.Image}'/>
@@ -806,25 +806,50 @@ function renderPost(post, loggedUser) {
         </div>
     `);
 
+    addPostActionIcons(loggedUser, post, render.find(POST_ICONS_CLASS));
     setPostAuthor(render, post.Author);
 
     return render;
 }
 
 /** Renders the post actions depending on the local user and the given post */
-function getPostActionIcons(localUser, post) {
+function addPostActionIcons(localUser, post, iconsPanel) {
+    let isLogged = localUser !== null;
+    let isAuthor = isLogged && localUser.Id === post.Author.Id;
+
+    let likeIcon = $(`
+        <span class="likeCmd cmdIconSmall fa-regular fa-thumbs-up">${post.Likes ?? 0}</span>
+    `);
+    iconsPanel.append(likeIcon);
+
+    if (isLogged && !isAuthor)
+    {
+        likeIcon.on("click", function () {
+            onPostLiked(post);
+        });
+    }
+
     let author = post.Author;
 
     if (localUser === null || author === null)
-        return "";
+        return;
 
-    if (localUser.Id !== author.Id)
-        return "";
+    let icons = "";
 
-    return `
-        <span class="editCmd cmdIconSmall fa fa-pencil" postId="${post.Id}" title="Modifier nouvelle"></span>
-        <span class="deleteCmd cmdIconSmall fa fa-trash" postId="${post.Id}" title="Effacer nouvelle"></span>
-    `;
+    if (localUser.Id === author.Id)
+    {
+        icons += `
+            <span class="editCmd cmdIconSmall fa fa-pencil" postId="${post.Id}" title="Modifier nouvelle"></span>
+            <span class="deleteCmd cmdIconSmall fa fa-trash" postId="${post.Id}" title="Effacer nouvelle"></span>
+        `;
+    }
+
+
+    return icons;
+}
+
+async function onPostLiked(post) {
+    console.log("LIKE");
 }
 
 /** Sets the author information of the given post */
