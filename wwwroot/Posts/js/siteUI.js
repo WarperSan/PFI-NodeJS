@@ -535,7 +535,7 @@ async function onUserVerificationConfirm(id, token) {
 
     if (Users_API.error) {
 
-        if (Users_API.currentHttpError === "Verification code does not matched.")
+        if (Users_API.currentHttpError === "Verification code does not match.")
             showError("Le code entré n'est pas valide.", "Veuillez vérifier si vous n'avez pas oublié un chiffre.");
         else
             showError("Un erreur est survenue!");

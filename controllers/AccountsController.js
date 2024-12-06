@@ -29,15 +29,13 @@ export default class AccountsController extends Controller {
     login(loginInfo) {
 
         // If no payload
-        if (!loginInfo)
-        {
+        if (!loginInfo) {
             this.HttpContext.response.badRequest("Credential Email and password are missing.");
             return;
         }
 
         // If repository not initialized
-        if (this.repository === null)
-        {
+        if (this.repository === null) {
             this.HttpContext.response.notImplemented();
             return;
         }
@@ -45,15 +43,13 @@ export default class AccountsController extends Controller {
         let user = this.repository.findByField("Email", loginInfo.Email);
 
         // If user not found from given email
-        if (user === null)
-        {
+        if (user === null) {
             this.HttpContext.response.userNotFound("This user email is not found.");
             return;
         }
 
         // If passwords mismatch
-        if (user.Password !== loginInfo.Password)
-        {
+        if (user.Password !== loginInfo.Password) {
             this.HttpContext.response.wrongPassword("Wrong password.");
             return;
         }
@@ -75,8 +71,7 @@ export default class AccountsController extends Controller {
         let id = this.HttpContext.path.params.id;
 
         // If no id given
-        if (!id)
-        {
+        if (!id) {
             this.HttpContext.response.badRequest("Id is not specified.")
             return;
         }
@@ -84,23 +79,20 @@ export default class AccountsController extends Controller {
         let tokenFound = TokenManager.findUserToken(id);
 
         // If no token for this user
-        if (tokenFound === null)
-        {
+        if (tokenFound === null) {
             this.HttpContext.response.ok();
             return;
         }
 
         let token = this.HttpContext.path.params.token;
 
-        if (!token)
-        {
+        if (!token) {
             this.HttpContext.response.badRequest("Token is not specified.")
             return;
         }
 
         // If tokens mismatch
-        if (tokenFound.Access_token !== token)
-        {
+        if (tokenFound.Access_token !== token) {
             this.HttpContext.response.badRequest("You don't have the rights to end this connection.");
             return;
         }
@@ -134,8 +126,7 @@ export default class AccountsController extends Controller {
     verify() {
 
         // If repository not initialized
-        if (this.repository === null)
-        {
+        if (this.repository === null) {
             this.HttpContext.response.notImplemented();
             return;
         }
@@ -144,8 +135,7 @@ export default class AccountsController extends Controller {
         let userFound = this.repository.findByField('Id', id);
 
         // If no user found with the given ID
-        if (!userFound)
-        {
+        if (!userFound) {
             this.HttpContext.response.unprocessable();
             return;
         }
@@ -153,8 +143,7 @@ export default class AccountsController extends Controller {
         let code = parseInt(this.HttpContext.path.params.code);
 
         // If codes mismatch
-        if (userFound.VerifyCode !== code)
-        {
+        if (userFound.VerifyCode !== code) {
             this.HttpContext.response.unverifiedUser("Verification code does not matched.");
             return;
         }
@@ -163,8 +152,7 @@ export default class AccountsController extends Controller {
         this.repository.update(userFound.Id, userFound, false);
 
         // If the model became invalid
-        if (!this.repository.model.state.isValid)
-        {
+        if (!this.repository.model.state.isValid) {
             this.HttpContext.response.unprocessable();
             return;
         }
@@ -180,7 +168,7 @@ export default class AccountsController extends Controller {
             let id = this.HttpContext.path.params.Id;
             let email = this.HttpContext.path.params.Email;
             if (id && email) {
-                let prototype = {Id: id, Email: email};
+                let prototype = { Id: id, Email: email };
                 this.HttpContext.response.JSON(this.repository.checkConflict(prototype));
             } else
                 this.HttpContext.response.JSON(false);

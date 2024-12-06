@@ -1,1 +1,15 @@
-[{"Email":"leumas.ecole@gmail.com","Password":"password","Name":"Samuel Gauthier","Avatar":"2a54c561-b357-11ef-9a65-37edaf01c440.png","Created":1733455243,"VerifyCode":"verified","Authorizations":{"readAccess":1,"writeAccess":1},"Id":"2a54c560-b357-11ef-9a65-37edaf01c440"}]
+[
+  {
+    "Email": "leumas.ecole@gmail.com",
+    "Password": "password",
+    "Name": "Samuel Gauthier",
+    "Avatar": "2a54c561-b357-11ef-9a65-37edaf01c440.png",
+    "Created": 1733455243,
+    "VerifyCode": "verified",
+    "Authorizations": {
+      "readAccess": 1,
+      "writeAccess": 1
+    },
+    "Id": "2a54c560-b357-11ef-9a65-37edaf01c440"
+  }
+]
