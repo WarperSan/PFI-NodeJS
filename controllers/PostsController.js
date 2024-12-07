@@ -87,6 +87,7 @@ export default class PostModelsController extends Controller {
             likesController.repository.keepByFilter(l => likeIds.indexOf(l.Id) === -1);
         }
 
+        this.repository.newETag();
         this.HttpContext.response.ok();
     }
 

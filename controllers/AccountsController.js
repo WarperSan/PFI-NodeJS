@@ -7,6 +7,7 @@ import Controller from './Controller.js';
 import AccessControl from '../accessControl.js';
 import TokensManager from "../tokensManager.js";
 import PostModelsController from "./PostsController.js";
+import LikesController from "./LikesController.js";
 
 export default class AccountsController extends Controller {
     constructor(HttpContext) {
@@ -346,6 +347,7 @@ export default class AccountsController extends Controller {
         }
 
         new PostModelsController(null).deleteFromAuthor(id);
+        new LikesController(null).deleteFromUser(id);
         this.repository.remove(id);
 
         if (!this.repository.model.state.isValid) {

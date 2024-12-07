@@ -10,4 +10,12 @@ export default class LikesController extends Controller {
     getLikes(idPost) {
         return this.repository.findByFilter(l => l.IdPost === idPost);
     }
+
+    deleteFromUser(idUser) {
+        this.repository.keepByFilter(l => l.IdUser !== idUser);
+    }
+
+    deleteFromPost(idPost) {
+        this.repository.keepByFilter(l => l.IdPost !== idPost);
+    }
 }

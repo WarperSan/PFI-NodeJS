@@ -97,13 +97,10 @@ async function initialView() {
 
     let local = await Users_API.GetLocalUser();
 
-    if (local !== null && local.CanWrite)
-    {
+    if (local !== null && local.CanWrite) {
         $("#createPost").show();
         $("#hiddenIcon").hide();
-    }
-    else
-    {
+    } else {
         $("#createPost").hide();
         $("#hiddenIcon").show();
     }
@@ -734,14 +731,6 @@ function attach_Posts_UI_Events_Callback() {
 
     linefeeds_to_Html_br(".postText");
     // attach icon command click event callback
-    $(".editCmd").off();
-    $(".editCmd").on("click", function () {
-        showEditPostForm($(this).attr("postId"));
-    });
-    $(".deleteCmd").off();
-    $(".deleteCmd").on("click", function () {
-        showDeletePostForm($(this).attr("postId"));
-    });
     $(".moreText").off();
     $(".moreText").click(function () {
         $(`.commentsPanel[postId=${$(this).attr("postId")}]`).show();
@@ -817,6 +806,29 @@ function addPostActionIcons(localUser, post, iconsPanel) {
     let isLogged = localUser !== null;
     let isAuthor = isLogged && localUser.Id === post.Author.Id;
 
+    if (isAuthor)
+        postAuthorIcons(localUser, post, iconsPanel);
+
+    postEveryoneIcons(localUser, post, iconsPanel);
+}
+
+/** Sets the icons on a post for the author */
+function postAuthorIcons(localUser, post, iconsPanel) {
+    let editIcon = $(`<span class="editCmd cmdIconSmall fa fa-pencil" postId="${post.Id}" title="Modifier nouvelle"></span>`);
+    editIcon.on("click", function () {
+        showEditPostForm($(this).attr("postId"));
+    });
+    iconsPanel.append(editIcon);
+
+    let deleteIcon = $(`<span class="deleteCmd cmdIconSmall fa fa-trash" postId="${post.Id}" title="Effacer nouvelle"></span>`);
+    deleteIcon.on("click", function () {
+        showDeletePostForm($(this).attr("postId"));
+    });
+    iconsPanel.append(deleteIcon);
+}
+
+/** Sets the icons on a post for everyone */
+function postEveryoneIcons(localUser, post, iconsPanel) {
     let likes = post.Likes ?? [];
 
     let likeIcon = $(`
@@ -824,10 +836,9 @@ function addPostActionIcons(localUser, post, iconsPanel) {
     `);
     iconsPanel.append(likeIcon);
 
-    if (isLogged)
-    {
-        if (post.Likes.indexOf(localUser.Id) !== -1)
-        {
+    // If logged in
+    if (localUser !== null) {
+        if (post.Likes.indexOf(localUser.Id) !== -1) {
             likeIcon.addClass('fa-solid');
             likeIcon.removeClass("fa-regular");
         }
@@ -835,27 +846,11 @@ function addPostActionIcons(localUser, post, iconsPanel) {
         likeIcon.on("click", function () {
             onPostLiked(post);
         });
-    }
-
-    let author = post.Author;
-
-    if (localUser === null || author === null)
-        return;
-
-    let icons = "";
-
-    if (localUser.Id === author.Id)
-    {
-        icons += `
-            <span class="editCmd cmdIconSmall fa fa-pencil" postId="${post.Id}" title="Modifier nouvelle"></span>
-            <span class="deleteCmd cmdIconSmall fa fa-trash" postId="${post.Id}" title="Effacer nouvelle"></span>
-        `;
-    }
-
-
-    return icons;
+    } else
+        likeIcon.css("cursor", "initial");
 }
 
+/** Called when a post is either liked or unliked */
 async function onPostLiked(post) {
     let localUser = await Users_API.GetLocalUser();
 
@@ -876,8 +871,7 @@ function setPostAuthor(element, author) {
     let name = "???";
     let avatar = "no-avatar.png";
 
-    if (author)
-    {
+    if (author) {
         name = author.Name;
         avatar = author.Avatar;
     }
@@ -1098,8 +1092,7 @@ function newPost() {
 async function renderPostForm(post = null) {
     let localUser = await Users_API.GetLocalUser();
 
-    if (Users_API.error)
-    {
+    if (Users_API.error) {
         showError("Une erreur est survenue!");
         return;
     }
