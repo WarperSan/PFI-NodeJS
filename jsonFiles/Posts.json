@@ -1,14 +1,5 @@
 [
   {
-    "Date": 1731154456144,
-    "Category": "Politique",
-    "Title": "Le Parti québécois sanctionne le militant Vincent Boulay",
-    "Text": "Le Parti québécois (PQ) sévit à l'endroit de Vincent Boulay, un militant membre de sa commission politique à qui il reproche d'avoir contrevenu à son code d'éthique et d'avoir manqué de loyauté et de solidarité. Radio-Canada a appris que le conseil exécutif national (CEN) du PQ a décidé de l'exclure de toute instance du parti, comme la commission politique, pendant deux ans. Il reste cependant membre du PQ.\r\n\r\nLes reproches adressés à M. Boulay sont flous, le Parti québécois prétextant qu'il s'agit d'un processus disciplinaire confidentiel. Mais dans une lettre datée du 1er novembre dont plusieurs médias ont obtenu copie, la formation politique reproche à son militant d'avoir partagé de l'information confidentielle avec un chroniqueur. Elle l'accuse aussi d'avoir publié des messages sur les réseaux sociaux qui constitueraient un manquement aux règles internes du parti, sans donner plus de détails.\r\n\r\nCes infractions sont passibles de sanctions pouvant aller jusqu'à l'expulsion du parti, indique-t-on dans la lettre.\r\n\r\nJoint au téléphone, M. Boulay s'est dit extrêmement déçu de la décision. La sanction porte atteinte au droit à la dissidence, ce qui m'apparaît dangereux et contraire aux principes fondamentaux du Parti québécois, a-t-il ajouté.",
-    "Image": "74d2e771-9e17-11ef-aadd-b152ce707884.avif",
-    "Id": "74d2e770-9e17-11ef-aadd-b152ce707884",
-    "CreatedBy": "9b8ae6c0-b3ec-11ef-8cb5-63266483be14"
-  },
-  {
     "Date": 1731153655372,
     "Category": "Sport",
     "Title": "Les longs périple des footballeuses amputées haïtiennes vers la Colombie",
@@ -81,12 +72,12 @@
     "CreatedBy": "72d65160-b392-11ef-bd08-b31a00abbeb9"
   },
   {
-    "Id": "02ac0560-b3e7-11ef-9b64-8760a3ea5b0d",
-    "CreatedBy": "72d65160-b392-11ef-bd08-b31a00abbeb9",
-    "Date": 1733517023533,
-    "Category": "Test",
-    "Title": "Test",
-    "Text": "Test",
-    "Image": "02ac2c70-b3e7-11ef-9b64-8760a3ea5b0d.png"
+    "Id": "c2b6c170-b684-11ef-a549-e558ee8b2f69",
+    "CreatedBy": "9b8ae6c0-b3ec-11ef-8cb5-63266483be14",
+    "Date": 1733804679045,
+    "Category": "Admin",
+    "Title": "Admin Post",
+    "Text": "Ceci est un post par un ami",
+    "Image": "c2b6c171-b684-11ef-a549-e558ee8b2f69.png"
   }
 ]

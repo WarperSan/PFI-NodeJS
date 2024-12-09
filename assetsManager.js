@@ -24,7 +24,9 @@ export function save(base64Data) {
 export function remove(assetToDelete) {
     if (assetToDelete != '') {
         let assetPath = `./${wwwroot}/${assetsRepository}/${assetToDelete}`;
-        fs.unlinkSync(assetPath);
+
+        if (fs.existsSync(assetPath))
+            fs.unlinkSync(assetPath);
     }
 }
 export function addHostReference(asset) {

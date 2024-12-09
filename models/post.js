@@ -25,6 +25,7 @@ export default class Post extends Model {
 
         instance.Author = postsController.author(instance.Id);
         instance.Likes = likesController.getLikes(instance.Id).map(l => l.IdUser);
+        instance.LikeNames = likesController.getNames(instance.Id, 3);
 
         return instance;
     }

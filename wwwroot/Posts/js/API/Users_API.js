@@ -78,7 +78,7 @@ class Users_API {
     }
 
     /** Logs out the user of the given id */
-    static Logout(id) {
+    static Logout() {
         Users_API.initHttpState();
         return new Promise(resolve => {
             if (!this.IsUserLoggedIn())
@@ -87,16 +87,16 @@ class Users_API {
                 return;
             }
 
-            let token = this.#GetToken();
-            sessionStorage.removeItem(LOCAL_USER_TOKEN_KEY);
-
             $.ajax({
-                url: this.Host_URL() + `/accounts/logout?id=${id}&token=${token}`,
+                url: this.Host_URL() + `/accounts/logout`,
+                headers: { Authorization: `Bearer ${this.GetToken()}` },
                 type: "GET",
                 success: (data) => {
+                    sessionStorage.removeItem(LOCAL_USER_TOKEN_KEY);
                     resolve(data);
                 },
                 error: (xhr) => {
+                    sessionStorage.removeItem(LOCAL_USER_TOKEN_KEY);
                     Users_API.setHttpErrorState(xhr);
                     resolve(null);
                 }
@@ -122,7 +122,7 @@ class Users_API {
         });
     }
 
-    static #GetToken() {
+    static GetToken() {
         return sessionStorage.getItem(LOCAL_USER_TOKEN_KEY);
     }
 
@@ -133,7 +133,7 @@ class Users_API {
 
     /** Checks if the local user is logged in */
     static IsUserLoggedIn() {
-        let token = this.#GetToken();
+        let token = this.GetToken();
         return token !== null && token !== "undefined";
     }
 
@@ -150,7 +150,7 @@ class Users_API {
                 return;
             }
 
-            let token = this.#GetToken();
+            let token = this.GetToken();
 
             $.ajax({
                 url: this.Host_URL() + `/accounts/fromToken?token=${token}`,
@@ -173,9 +173,7 @@ class Users_API {
         return new Promise(resolve => {
             $.ajax({
                 url: this.Host_URL() + `/accounts/modify`,
-                headers: {
-                    Authorization: `Bearer ${this.#GetToken()}`,
-                },
+                headers: { Authorization: `Bearer ${this.GetToken()}` },
                 type: "PUT",
                 contentType: "application/json",
                 data: JSON.stringify(newData),
@@ -197,9 +195,7 @@ class Users_API {
         return new Promise(resolve => {
             $.ajax({
                 url: this.Host_URL() + `/accounts/remove/${id}`,
-                headers: {
-                    Authorization: `Bearer ${this.#GetToken()}`,
-                },
+                headers: { Authorization: `Bearer ${this.GetToken()}` },
                 type: "GET",
                 success: (data) => {
                     resolve(data);

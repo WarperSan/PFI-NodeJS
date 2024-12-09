@@ -108,16 +108,34 @@ class Posts_API {
         });
     }
 
-    static ToggleLike(idPost, idUser) {
+    static ToggleLike(idPost) {
         Posts_API.initHttpState();
         return new Promise(resolve => {
             $.ajax({
-                url: this.Host_URL() + "/posts/togglelike",
-                type: "POST",
-                contentType: 'application/json',
-                data: JSON.stringify({ IdPost: idPost, IdUser: idUser }),
+                url: this.Host_URL() + `/posts/togglelike?id=${idPost}`,
+                headers: {
+                    Authorization: `Bearer ${Users_API.GetToken()}`,
+                },
+                type: "GET",
                 complete: () => {
                     resolve(true);
+                },
+                error: (xhr) => {
+                    Posts_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    static GetLikeNames(idPost) {
+        Posts_API.initHttpState();
+        return new Promise(resolve => {
+            $.ajax({
+                url: this.Host_URL() + `/likes/getnames?id=${idPost}`,
+                type: "GET",
+                complete: (data) => {
+                    resolve(data);
                 },
                 error: (xhr) => {
                     Posts_API.setHttpErrorState(xhr);

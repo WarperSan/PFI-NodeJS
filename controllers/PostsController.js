@@ -3,6 +3,7 @@ import Repository from '../models/repository.js';
 import Controller from './Controller.js';
 import UsersController from "./UsersController.js";
 import LikesController from "./LikesController.js";
+import AccessControl from "../accessControl.js";
 
 export default class PostModelsController extends Controller {
     constructor(HttpContext) {
@@ -32,24 +33,24 @@ export default class PostModelsController extends Controller {
         return boundUser;
     }
 
-    // POST: /posts/togglelike [{ IdPost:..., IdUser: ... }]
-    togglelike(data) {
+    // POST: /posts/togglelike?id=...
+    togglelike() {
 
-        let idPost = data.IdPost;
-        let idUser = data.IdUser;
+        let idPost = this.HttpContext.path.params.id;
 
         if (idPost === null) {
             this.HttpContext.response.badRequest("No post id specified.");
             return;
         }
 
-        if (idUser === null) {
-            this.HttpContext.response.badRequest("No user id specified.");
+        if (this.repository === null) {
+            this.HttpContext.response.notImplemented();
             return;
         }
 
-        if (this.repository === null) {
-            this.HttpContext.response.notImplemented();
+        // If user doesn't have authorizations
+        if (!AccessControl.readGranted(this.HttpContext.authorizations, AccessControl.user())) {
+            this.HttpContext.response.unAuthorized();
             return;
         }
 
@@ -60,8 +61,7 @@ export default class PostModelsController extends Controller {
             return;
         }
 
-        let usersController = new UsersController(null);
-        let user = usersController.repository.findByField("Id", idUser);
+        let user = this.HttpContext.user;
 
         if (user === null) {
             this.HttpContext.response.notFound("No user was found with the given id.");
@@ -69,7 +69,7 @@ export default class PostModelsController extends Controller {
         }
 
         let likesController = new LikesController(null);
-        let likes = likesController.repository.findByFilter(l => l.IdPost === idPost && l.IdUser === idUser);
+        let likes = likesController.repository.findByFilter(l => l.IdPost === idPost && l.IdUser === user.Id);
 
         if (likes === null)
         {
@@ -79,7 +79,7 @@ export default class PostModelsController extends Controller {
 
         // Add
         if (likes.length === 0)
-            likesController.repository.add({ IdPost: idPost, IdUser: idUser });
+            likesController.repository.add({ IdPost: idPost, IdUser: user.Id });
         // Remove
         else
         {

@@ -1,6 +1,7 @@
 import Repository from '../models/repository.js';
 import Controller from './Controller.js';
 import Like from "../models/like.js";
+import UsersController from "./UsersController.js";
 
 export default class LikesController extends Controller {
     constructor(HttpContext) {
@@ -9,6 +10,14 @@ export default class LikesController extends Controller {
 
     getLikes(idPost) {
         return this.repository.findByFilter(l => l.IdPost === idPost);
+    }
+
+    getNames(id, count) {
+        let userController = new UsersController(null);
+        let likes = this.getLikes(id).slice(0, count);
+        likes = likes.map(l => userController.repository.get(l.IdUser).Name);
+
+        return likes.slice(0, count);
     }
 
     deleteFromUser(idUser) {

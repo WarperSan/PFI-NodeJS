@@ -63,38 +63,16 @@ export default class AccountsController extends Controller {
         this.HttpContext.response.created(newToken);
     }
 
-    // GET: /accounts/logout?id=...&token=...
+    // GET: /accounts/logout
     logout() {
-        let id = this.HttpContext.path.params.id;
+        let user = this.HttpContext.user;
 
-        // If no id given
-        if (!id) {
-            this.HttpContext.response.badRequest("Id is not specified.")
-            return;
-        }
-
-        let tokenFound = TokenManager.findUserToken(id);
-
-        // If no token for this user
-        if (tokenFound === null) {
+        if (user === null) {
             this.HttpContext.response.ok();
             return;
         }
 
-        let token = this.HttpContext.path.params.token;
-
-        if (!token) {
-            this.HttpContext.response.badRequest("Token is not specified.")
-            return;
-        }
-
-        // If tokens mismatch
-        if (tokenFound.Access_token !== token) {
-            this.HttpContext.response.unAuthorized();
-            return;
-        }
-
-        TokenManager.logout(id);
+        TokenManager.logout(user.Id);
         this.HttpContext.response.ok();
     }
 
@@ -330,13 +308,12 @@ export default class AccountsController extends Controller {
 
     // GET:account/remove/id
     remove(id) {
-
         if (id === undefined) {
             this.HttpContext.response.badRequest("No id was provided.");
             return;
         }
 
-        if (this.HttpContext.user.Id !== id && !AccessControl.writeGrantedAdminOrOwner(this.HttpContext.authorizations, this.requiredAuthorizations, id)) {
+        if (this.HttpContext.user.Id !== id && !AccessControl.writeGrantedAdminOrOwner(this.HttpContext.authorizations, AccessControl.admin(), id)) {
             this.HttpContext.response.unAuthorized();
             return;
         }

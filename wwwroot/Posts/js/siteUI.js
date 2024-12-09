@@ -334,8 +334,7 @@ function onLoginError(errorMessage) {
 
 /** Logs out the connected user */
 async function logout() {
-    let user = await Users_API.GetLocalUser();
-    await Users_API.Logout(user?.Id);
+    await Users_API.Logout();
 
     initialView();
     updateDropDownMenu();
@@ -577,16 +576,7 @@ async function deleteLocalUser() {
     if (user === null)
         return;
 
-    await Users_API.Delete(user.Id);
-
-    if (Users_API.error) {
-        showError("Une erreur est survenue!");
-        return;
-    }
-
-    hideUserForm();
-    showPosts();
-    logout();
+    showUserDeletion(user.Id);
 }
 
 //////////////////////////// User Verification /////////////////////////////////////////////////////////////
@@ -642,6 +632,50 @@ function onUserVerificationReturn() {
     hideUserVerification();
     hideUserForm();
     showLogin();
+}
+
+//////////////////////////// User Deletion /////////////////////////////////////////////////////////////
+
+const USER_DELETION_POPUP_ID = "#deletionModal";
+const USER_DELETION_CONFIRM_ID = "#deletionModalConfirmBtn";
+const USER_DELETION_CANCEL_ID = "#deletionModalCancelBtn";
+
+/** Shows the user deletion popup */
+function showUserDeletion(id) {
+    $(USER_DELETION_POPUP_ID).modal('show');
+
+    $(USER_DELETION_CONFIRM_ID).off();
+    $(USER_DELETION_CANCEL_ID).off();
+
+    $(USER_DELETION_CONFIRM_ID).on('click', function () {
+        onUserDeletionConfirm(id);
+    });
+    $(USER_DELETION_CANCEL_ID).on('click', onUserDeletionCancel);
+}
+
+/** Hides the user deletion popup */
+function hideUserDeletion() {
+    $(USER_DELETION_POPUP_ID).modal('hide');
+}
+
+async function onUserDeletionConfirm(id) {
+    await Users_API.Delete(id);
+
+    hideUserDeletion();
+    hideUserForm();
+    logout();
+
+    if (Users_API.error) {
+        showError("Une erreur est survenue!");
+        return;
+    }
+
+    showPosts();
+}
+
+/** Called when the user cancels the user deletion popup */
+function onUserDeletionCancel() {
+    hideUserDeletion();
 }
 
 //////////////////////////// Posts rendering /////////////////////////////////////////////////////////////
@@ -765,6 +799,7 @@ function removeWaitingGif() {
 const POST_AUTHOR_AVATAR_CLASS = ".postAuthorAvatar";
 const POST_AUTHOR_NAME_CLASS = ".postAuthorName";
 const POST_ICONS_CLASS = ".postIcons";
+const POST_LIKE_CLASS = ".likeCmd";
 
 /** Renders the given post for the given user */
 function renderPost(post, loggedUser) {
@@ -805,11 +840,26 @@ function renderPost(post, loggedUser) {
 function addPostActionIcons(localUser, post, iconsPanel) {
     let isLogged = localUser !== null;
     let isAuthor = isLogged && localUser.Id === post.Author.Id;
+    let isAdmin = isLogged && localUser.isAdmin;
+
+    if (isAdmin)
+        postAdminIcons(localUser, post, iconsPanel, isAuthor);
 
     if (isAuthor)
         postAuthorIcons(localUser, post, iconsPanel);
 
     postEveryoneIcons(localUser, post, iconsPanel);
+}
+
+/** Sets the icons on a post for the admin */
+function postAdminIcons(localUser, post, iconsPanel, isAuthor) {
+    if (!isAuthor) {
+        let deleteIcon = $(`<span class="deleteCmd cmdIconSmall fa fa-trash" postId="${post.Id}" title="Effacer nouvelle"></span>`);
+        deleteIcon.on("click", function () {
+            showDeletePostForm($(this).attr("postId"));
+        });
+        iconsPanel.append(deleteIcon);
+    }
 }
 
 /** Sets the icons on a post for the author */
@@ -832,7 +882,7 @@ function postEveryoneIcons(localUser, post, iconsPanel) {
     let likes = post.Likes ?? [];
 
     let likeIcon = $(`
-        <span class="likeCmd cmdIconSmall fa-regular fa-thumbs-up">${likes.length}</span>
+        <span class="${POST_LIKE_CLASS.substring(1)} cmdIconSmall fa-regular fa-thumbs-up">${likes.length}</span>
     `);
     iconsPanel.append(likeIcon);
 
@@ -848,6 +898,8 @@ function postEveryoneIcons(localUser, post, iconsPanel) {
         });
     } else
         likeIcon.css("cursor", "initial");
+
+    setPostLikers(iconsPanel, post);
 }
 
 /** Called when a post is either liked or unliked */
@@ -879,6 +931,11 @@ function setPostAuthor(element, author) {
     element.find(POST_AUTHOR_AVATAR_CLASS).css("background-image", `url(${avatar})`);
     element.find(POST_AUTHOR_AVATAR_CLASS).css("background-image", `url(${avatar})`);
     element.find(POST_AUTHOR_NAME_CLASS).text(name);
+}
+
+/** Sets the names of the first people who liked this post */
+async function setPostLikers(element, post) {
+    element.find(POST_LIKE_CLASS).prop("title", post.LikeNames.join("\n"));
 }
 
 //////////////////////////// Dropdown menu /////////////////////////////////////////////////////////////
@@ -954,17 +1011,33 @@ function addLoggedOutItems() {
 async function addLoggedInItems() {
     let user = await Users_API.GetLocalUser();
 
+    if (user === null) {
+        await logout();
+        hidePosts();
+        showError("Une erreur est survenu!", "Vous avez été déconnecté du service.");
+        return;
+    }
+
     let userInfo = $(`
         <div style="display: flex; height: 3em; align-items: center; gap: 0.5em;">
             <div style="flex: 3;">
-                <div style="background-position: center; background-size: cover; background-image: url('${user?.Avatar}'); height: 48px; width: 48px; border-radius: 2em; margin: auto;"></div>
+                <div style="background-position: center; background-size: cover; background-image: url('${user.Avatar}'); height: 48px; width: 48px; border-radius: 2em; margin: auto;"></div>
             </div>
-            <div style="flex: 7; font-weight: bold;">${user?.Name}</div>
+            <div style="flex: 7; font-weight: bold;">${user.Name}</div>
         </div>
     `);
     addDropdownElement(userInfo);
 
     addDropdownDivider();
+
+    if (user.isAdmin)
+    {
+        let managerUsers = addDropdownItem("Gestion des usagers", "managerUsersCmd", "fa-solid fa-user-gear");
+        managerUsers.on("click", function () {
+            console.log("GESTION USAGER");
+        });
+        addDropdownDivider();
+    }
 
     let modifyUser = addDropdownItem("Modifier votre profil", "modifyUserCmd", "fa-solid fa-user-pen");
     modifyUser.on("click", showModifyUser);
