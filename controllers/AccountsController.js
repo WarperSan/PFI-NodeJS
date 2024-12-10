@@ -77,6 +77,12 @@ export default class AccountsController extends Controller {
 
         user = this.repository.get(user.Id);
 
+        if (user.isBlocked)
+        {
+            this.HttpContext.response.unAuthorized("This user is blocked.");
+            return;
+        }
+
         let newToken = TokenManager.create(user);
         this.HttpContext.response.created(newToken);
     }

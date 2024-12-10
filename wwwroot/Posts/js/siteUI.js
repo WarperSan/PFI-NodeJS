@@ -115,6 +115,7 @@ async function initialView() {
     $('#errorContainer').hide();
     $(LOGIN_CONTAINER_ID).hide();
     $(USER_FORM_CONTAINER_ID).hide();
+    $(ADMIN_PANEL_CONTAINER_ID).hide();
     showSearchIcon();
 }
 
@@ -325,6 +326,9 @@ function onLoginError(errorMessage) {
         inputID = LOGIN_EMAIL_ID;
     } else if (errorMessage === "Wrong password.") {
         errorMessage = "Mot de passe incorrect";
+        inputID = LOGIN_PASSWORD_ID;
+    }  else if (errorMessage === "This user is blocked.") {
+        errorMessage = "Ce compte a été bloqué par un administrateur";
         inputID = LOGIN_PASSWORD_ID;
     }
 
@@ -630,8 +634,8 @@ function renderAdminPanelUser(user, panel) {
 
     let userVerifiedTooltip = user.Verified ? `${userName} est vérifié` : `${userName} n'est pas vérifié`;
     let userVerified = user.Verified
-        ? `<div class="fa-solid fa-circle-check ${ADMIN_PANEL_BLOCK_USER_CLASS.substring(1)}" style="color:green;" title="${userVerifiedTooltip}"></div>`
-        : `<div class="fa-solid fa-circle-xmark ${ADMIN_PANEL_BLOCK_USER_CLASS.substring(1)}" style="color:red;" title="${userVerifiedTooltip}"></div>`;
+        ? `<div class="fa-solid fa-circle-check" style="color:green;" title="${userVerifiedTooltip}"></div>`
+        : `<div class="fa-solid fa-circle-xmark" style="color:red;" title="${userVerifiedTooltip}"></div>`;
 
     let userRole = "";
     let userRoleTooltip = "";
@@ -1162,6 +1166,14 @@ async function addLoggedInItems() {
     let user = await Users_API.GetLocalUser();
 
     if (user === null) {
+        await logout();
+        hidePosts();
+        showError("Une erreur est survenu!", "Vous avez été déconnecté du service.");
+        return;
+    }
+
+    if (user.isBlocked)
+    {
         await logout();
         hidePosts();
         showError("Une erreur est survenu!", "Vous avez été déconnecté du service.");

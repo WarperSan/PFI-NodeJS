@@ -127,21 +127,4 @@ class Posts_API {
             });
         });
     }
-
-    static GetLikeNames(idPost) {
-        Posts_API.initHttpState();
-        return new Promise(resolve => {
-            $.ajax({
-                url: this.Host_URL() + `/likes/getnames?id=${idPost}`,
-                type: "GET",
-                complete: (data) => {
-                    resolve(data);
-                },
-                error: (xhr) => {
-                    Posts_API.setHttpErrorState(xhr);
-                    resolve(null);
-                }
-            });
-        });
-    }
 }
