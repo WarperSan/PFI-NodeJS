@@ -1,0 +1,52 @@
+#adminPanelContainer {
+    margin: 2em;
+}
+
+#adminPanelUsers {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+}
+
+.adminPanelUser {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.adminPanelUserAvatar {
+    width: 48px;
+    height: 48px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 30px;
+}
+
+.adminPanelUserLeft {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+}
+
+.adminPanelUserRight {
+    display: flex;
+    gap: 1em;
+    font-size: 1.3em;
+}
+
+.admin-icon-user {
+    color: blue;
+}
+
+.adminPanelPromoteUser,
+.adminPanelBlockUser {
+    cursor: pointer;
+}
+
+.adminPanelBlockUser:is(.fa-lock) {
+    color: red;
+}
+
+.adminPanelBlockUser:is(.fa-unlock) {
+    color: lime;
+}

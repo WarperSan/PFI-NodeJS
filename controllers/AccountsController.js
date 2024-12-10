@@ -14,17 +14,35 @@ export default class AccountsController extends Controller {
         super(HttpContext, new Repository(new UserModel()), AccessControl.admin());
     }
 
+    // GET: /accounts?includeSelf=...
     index(id) {
-        if (id != '') {
-            if (AccessControl.readGranted(this.HttpContext.authorizations, AccessControl.admin()))
-                this.HttpContext.response.JSON(this.repository.get(id));
-            else
+
+        let includeSelf = this.HttpContext.path.params?.includeSelf ?? false;
+
+        if (id === '') {
+
+            if (!AccessControl.granted(this.HttpContext.authorizations, AccessControl.admin()))
+            {
                 this.HttpContext.response.unAuthorized("Unauthorized access");
-        } else {
-            if (AccessControl.granted(this.HttpContext.authorizations, AccessControl.admin()))
-                this.HttpContext.response.JSON(this.repository.getAll(this.HttpContext.path.params), this.repository.ETag, false, AccessControl.admin());
-            else
+                return;
+            }
+
+            let users = this.repository.getAll(this.HttpContext.path.params);
+
+            if (!includeSelf)
+                users = users.filter(u => u.Id !== this.HttpContext.user.Id);
+
+            this.HttpContext.response.JSON(users, this.repository.ETag, false, AccessControl.admin());
+        }
+        else
+        {
+            if (!AccessControl.readGranted(this.HttpContext.authorizations, AccessControl.admin()))
+            {
                 this.HttpContext.response.unAuthorized("Unauthorized access");
+                return;
+            }
+
+            this.HttpContext.response.JSON(this.repository.get(id));
         }
     }
 
@@ -218,36 +236,94 @@ export default class AccountsController extends Controller {
         this.sendVerificationEmail(newUser);
     }
 
-    promote(user) {
-        if (this.repository != null) {
-            let foundUser = this.repository.findByField("Id", user.Id);
-            foundUser.Authorizations.readAccess++;
-            if (foundUser.Authorizations.readAccess > 3) foundUser.Authorizations.readAccess = 1;
-            foundUser.Authorizations.writeAccess++;
-            if (foundUser.Authorizations.writeAccess > 3) foundUser.Authorizations.writeAccess = 1;
-            this.repository.update(user.Id, foundUser, false);
-            if (this.repository.model.state.isValid) {
-                let userFound = this.repository.get(foundUser.Id); // get data binded record
-                this.HttpContext.response.JSON(userFound);
-            } else
-                this.HttpContext.response.badRequest(this.repository.model.state.errors);
-        } else
+    // POST: /accounts/promote [{ "Id": 0 }]
+    promote(data) {
+
+        if (data.Id === null)
+        {
+            this.HttpContext.response.badRequest("No id was provided.");
+            return;
+        }
+
+        if (this.repository === null)
+        {
             this.HttpContext.response.notImplemented();
+            return;
+        }
+
+        let foundUser = this.repository.findByField("Id", data.Id);
+
+        if (foundUser === null)
+        {
+            this.HttpContext.response.notFound("Could not find the requested user.");
+            return;
+        }
+
+        if (foundUser.Authorizations.readAccess === -1)
+        {
+            this.HttpContext.response.JSON(foundUser);
+            return;
+        }
+
+        foundUser.Authorizations.readAccess++;
+
+        if (foundUser.Authorizations.readAccess > 3)
+            foundUser.Authorizations.readAccess = 1;
+
+        foundUser.Authorizations.writeAccess++;
+
+        if (foundUser.Authorizations.writeAccess > 3)
+            foundUser.Authorizations.writeAccess = 1;
+
+        this.repository.update(data.Id, foundUser, false);
+
+        if (!this.repository.model.state.isValid) {
+            this.HttpContext.response.badRequest(this.repository.model.state.errors);
+            return;
+        }
+
+        let userFound = this.repository.get(foundUser.Id); // get data binded record
+        this.HttpContext.response.JSON(userFound);
     }
 
-    block(user) {
-        if (this.repository != null) {
-            let foundUser = this.repository.findByField("Id", user.Id);
-            foundUser.Authorizations.readAccess = foundUser.Authorizations.readAccess == 1 ? -1 : 1;
-            foundUser.Authorizations.writeAccess = foundUser.Authorizations.writeAccess == 1 ? -1 : 1;
-            this.repository.update(user.Id, foundUser, false);
-            if (this.repository.model.state.isValid) {
-                let userFound = this.repository.get(foundUser.Id); // get data binded record
-                this.HttpContext.response.JSON(userFound);
-            } else
-                this.HttpContext.response.badRequest(this.repository.model.state.errors);
-        } else
+    // POST: /accounts/block [{ "Id": 0 }]
+    block(data) {
+
+        if (data.Id === null)
+        {
+            this.HttpContext.response.badRequest("No id was provided.");
+            return;
+        }
+
+        if (this.repository === null)
+        {
             this.HttpContext.response.notImplemented();
+            return;
+        }
+
+        let foundUser = this.repository.findByField("Id", data.Id);
+
+        if (foundUser === null)
+        {
+            this.HttpContext.response.notFound("Could not find the requested user.");
+            return;
+        }
+
+        if (foundUser.Authorizations.readAccess === -1)
+            foundUser.Authorizations = AccessControl.user();
+        else
+            foundUser.Authorizations = AccessControl.blocked();
+
+        this.repository.update(data.Id, foundUser, false);
+
+        if (!this.repository.model.state.isValid)
+        {
+            this.HttpContext.response.badRequest(this.repository.model.state.errors);
+            return;
+        }
+
+        let userFound = this.repository.get(foundUser.Id); // get data binded record
+        this.HttpContext.response.JSON(userFound);
     }
 
     // PUT:account/modify body payload[{"Id": 0, "Name": "...", "Email": "...", "Password": "..."}]
@@ -313,7 +389,7 @@ export default class AccountsController extends Controller {
             return;
         }
 
-        if (this.HttpContext.user.Id !== id && !AccessControl.writeGrantedAdminOrOwner(this.HttpContext.authorizations, AccessControl.admin(), id)) {
+        if (!AccessControl.writeGrantedAdminOrOwner(this.HttpContext, AccessControl.admin(), id)) {
             this.HttpContext.response.unAuthorized();
             return;
         }

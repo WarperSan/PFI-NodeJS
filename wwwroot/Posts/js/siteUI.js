@@ -150,6 +150,7 @@ function showError(message, details = "") {
     $('#abort').show();
     setTitle("Erreur du serveur...");
     hideLogin();
+    hideAdminPanel();
     $(USER_FORM_CONTAINER_ID).hide();
     $("#errorContainer").show();
     $("#errorContainer").empty();
@@ -579,6 +580,151 @@ async function deleteLocalUser() {
     showUserDeletion(user.Id);
 }
 
+//////////////////////////// Admin panel /////////////////////////////////////////////////////////////
+
+const ADMIN_PANEL_CONTAINER_ID = "#adminPanelContainer";
+const ADMIN_PANEL_USERS_ID = "#adminPanelUsers";
+const ADMIN_PANEL_PROMOTE_USER_CLASS = ".adminPanelPromoteUser";
+const ADMIN_PANEL_DELETE_USER_CLASS = ".adminPanelDeleteUser";
+const ADMIN_PANEL_BLOCK_USER_CLASS = ".adminPanelBlockUser";
+
+/** Shows the admin panel */
+async function showAdminPanel() {
+    hidePosts();
+    $("#hiddenIcon").show();
+    $("#hiddenIcon2").show();
+    $('#abort').show();
+    setTitle("Gestion des usagers");
+
+    let users = await Users_API.GetAllUsers();
+
+    if (Users_API.error)
+    {
+        showError("Une erreur est survenue!");
+        return;
+    }
+
+    let container = getContainer(ADMIN_PANEL_CONTAINER_ID);
+    container.empty();
+    container.append($(`
+        <div id="${ADMIN_PANEL_USERS_ID.substring(1)}"></div>
+    `));
+
+    let list = container.find(ADMIN_PANEL_USERS_ID);
+
+    for (const user of users)
+        renderAdminPanelUser(user, list);
+
+    container.show();
+}
+
+/** Hides the admin panel */
+function hideAdminPanel() {
+    $(ADMIN_PANEL_CONTAINER_ID).hide();
+}
+
+/** Renders an user in the admin panel */
+function renderAdminPanelUser(user, panel) {
+
+    let userName = user.Name;
+
+    let userVerifiedTooltip = user.Verified ? `${userName} est vérifié` : `${userName} n'est pas vérifié`;
+    let userVerified = user.Verified
+        ? `<div class="fa-solid fa-circle-check ${ADMIN_PANEL_BLOCK_USER_CLASS.substring(1)}" style="color:green;" title="${userVerifiedTooltip}"></div>`
+        : `<div class="fa-solid fa-circle-xmark ${ADMIN_PANEL_BLOCK_USER_CLASS.substring(1)}" style="color:red;" title="${userVerifiedTooltip}"></div>`;
+
+    let userRole = "";
+    let userRoleTooltip = "";
+
+    if (user.isAdmin)
+    {
+        userRole = "fa-solid fa-user-tie admin-icon-user";
+        userRoleTooltip = `${userName} est un administrateur`;
+    }
+    else if (user.isSuper)
+    {
+        userRole = "fa-solid fa-user-plus super-icon-user";
+        userRoleTooltip = `${userName} est un super usager`;
+    }
+    else
+    {
+        userRole = "fa-solid fa-user user-icon-user";
+        userRoleTooltip = `${userName} est un usager standard`;
+    }
+
+    let userBlockedTooltip = user.isBlocked ? `${userName} est bloqué` : `${userName} n'est pas bloqué`;
+    let userBlocked = user.isBlocked
+        ? `<div class='fa-solid fa-lock ${ADMIN_PANEL_BLOCK_USER_CLASS.substring(1)}' title='${userBlockedTooltip}'></div>`
+        : `<div class='fa-solid fa-unlock ${ADMIN_PANEL_BLOCK_USER_CLASS.substring(1)}' title="${userBlockedTooltip}"></div>`;
+
+    console.log(user);
+    panel.append($(`
+        <div class="adminPanelUser">
+            <div class="adminPanelUserLeft">
+                <div class="adminPanelUserAvatar" style="background-image: url('${user.Avatar}');"></div>
+                <span>${user.Name}</span>
+                ${userVerified}
+            </div>
+            <div class="adminPanelUserRight">
+                <div class="${userRole} ${ADMIN_PANEL_PROMOTE_USER_CLASS.substring(1)}" title="${userRoleTooltip}"></div>
+                ${userBlocked}
+                <div class="fa-solid fa-trash ${ADMIN_PANEL_DELETE_USER_CLASS.substring(1)}" style="color:red; cursor:pointer;" title="Supprimer le compte de ${userName}"></div>
+            </div>
+        </div>
+    `));
+
+    panel.find(ADMIN_PANEL_PROMOTE_USER_CLASS).on("click", function () {
+        onAdminPanelPromote(user);
+    });
+
+    panel.find(ADMIN_PANEL_BLOCK_USER_CLASS).on("click", function () {
+        onAdminPanelBlock(user);
+    });
+
+    panel.find(ADMIN_PANEL_DELETE_USER_CLASS).on("click", function () {
+        onAdminPanelDelete(user);
+    });
+}
+
+/** Called when the admin promotes a user */
+async function onAdminPanelPromote(user) {
+    await Users_API.PromoteUser(user.Id);
+
+    if (Users_API.error)
+    {
+        showError("Une erreur est survenue!");
+        return;
+    }
+
+    showAdminPanel();
+}
+
+/** Called when the admin blocks a user */
+async function onAdminPanelBlock(user) {
+    await Users_API.BlockUser(user.Id);
+
+    if (Users_API.error)
+    {
+        showError("Une erreur est survenue!");
+        return;
+    }
+
+    showAdminPanel();
+}
+
+/** Called when the admin deletes a user */
+async function onAdminPanelDelete(user) {
+    showUserDeletion(user.Id, async function () {
+        if (Users_API.error)
+        {
+            showError("Une erreur est survenue!");
+            return;
+        }
+
+        showAdminPanel();
+    });
+}
+
 //////////////////////////// User Verification /////////////////////////////////////////////////////////////
 
 const USER_VERIFICATION_POPUP_ID = "#verificationModal";
@@ -641,14 +787,26 @@ const USER_DELETION_CONFIRM_ID = "#deletionModalConfirmBtn";
 const USER_DELETION_CANCEL_ID = "#deletionModalCancelBtn";
 
 /** Shows the user deletion popup */
-function showUserDeletion(id) {
+function showUserDeletion(id, callback = undefined) {
     $(USER_DELETION_POPUP_ID).modal('show');
 
     $(USER_DELETION_CONFIRM_ID).off();
     $(USER_DELETION_CANCEL_ID).off();
 
+    callback ??= async function () {
+        hideUserForm();
+        logout();
+
+        if (Users_API.error) {
+            showError("Une erreur est survenue!");
+            return;
+        }
+
+        showPosts();
+    };
+
     $(USER_DELETION_CONFIRM_ID).on('click', function () {
-        onUserDeletionConfirm(id);
+        onUserDeletionConfirm(id, callback);
     });
     $(USER_DELETION_CANCEL_ID).on('click', onUserDeletionCancel);
 }
@@ -658,19 +816,11 @@ function hideUserDeletion() {
     $(USER_DELETION_POPUP_ID).modal('hide');
 }
 
-async function onUserDeletionConfirm(id) {
+async function onUserDeletionConfirm(id, callback) {
     await Users_API.Delete(id);
 
     hideUserDeletion();
-    hideUserForm();
-    logout();
-
-    if (Users_API.error) {
-        showError("Une erreur est survenue!");
-        return;
-    }
-
-    showPosts();
+    await callback();
 }
 
 /** Called when the user cancels the user deletion popup */
@@ -1034,7 +1184,7 @@ async function addLoggedInItems() {
     {
         let managerUsers = addDropdownItem("Gestion des usagers", "managerUsersCmd", "fa-solid fa-user-gear");
         managerUsers.on("click", function () {
-            console.log("GESTION USAGER");
+            showAdminPanel();
         });
         addDropdownDivider();
     }

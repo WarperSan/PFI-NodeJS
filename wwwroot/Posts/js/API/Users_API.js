@@ -207,4 +207,68 @@ class Users_API {
             });
         });
     }
+
+    /** Fetches all the users */
+    static GetAllUsers() {
+        Users_API.initHttpState();
+
+        return new Promise(resolve => {
+            $.ajax({
+                url: this.Host_URL() + `/accounts`,
+                headers: { Authorization: `Bearer ${this.GetToken()}` },
+                type: "GET",
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Users_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    /** Promotes the user of the given ID */
+    static PromoteUser(id) {
+        Users_API.initHttpState();
+
+        return new Promise(resolve => {
+            $.ajax({
+                url: this.Host_URL() + `/accounts/promote`,
+                headers: { Authorization: `Bearer ${this.GetToken()}` },
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ "Id": id }),
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Users_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    /** Blocks the user of the given ID */
+    static BlockUser(id) {
+        Users_API.initHttpState();
+
+        return new Promise(resolve => {
+            $.ajax({
+                url: this.Host_URL() + `/accounts/block`,
+                headers: { Authorization: `Bearer ${this.GetToken()}` },
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ "Id": id }),
+                success: (data) => {
+                    resolve(data);
+                },
+                error: (xhr) => {
+                    Users_API.setHttpErrorState(xhr);
+                    resolve(null);
+                }
+            });
+        });
+    }
 }
