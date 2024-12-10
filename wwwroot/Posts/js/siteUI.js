@@ -37,6 +37,10 @@ async function Init_UI() {
     installKeywordsOnkeyupEvent();
     await showPosts();
     start_Periodic_Refresh();
+    initTimeout(100, logout);
+
+    if (await Users_API.IsUserLoggedIn())
+        timeout();
 }
 
 /////////////////////////// Search keywords UI //////////////////////////////////////////////////////////
@@ -311,10 +315,7 @@ function onCompleteLogin(token, user) {
     hideLogin();
     showPosts();
 
-    console.log("LOGGED");
-
-    //initTimeout(10, logout);
-    //startCountdown();
+    timeout();
 }
 
 /** Called when the login form received an error */
@@ -341,6 +342,7 @@ function onLoginError(errorMessage) {
 async function logout() {
     await Users_API.Logout();
 
+    noTimeout();
     initialView();
     updateDropDownMenu();
     await postsPanel.show(false);
@@ -661,7 +663,6 @@ function renderAdminPanelUser(user, panel) {
         ? `<div class='fa-solid fa-lock ${ADMIN_PANEL_BLOCK_USER_CLASS.substring(1)}' title='${userBlockedTooltip}'></div>`
         : `<div class='fa-solid fa-unlock ${ADMIN_PANEL_BLOCK_USER_CLASS.substring(1)}' title="${userBlockedTooltip}"></div>`;
 
-    console.log(user);
     panel.append($(`
         <div class="adminPanelUser">
             <div class="adminPanelUserLeft">

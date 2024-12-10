@@ -122,7 +122,9 @@ class Users_API {
         });
     }
 
-    static GetToken() {
+    static GetToken(refreshTimeout = true) {
+        if (refreshTimeout && closePopup)
+            closePopup();
         return sessionStorage.getItem(LOCAL_USER_TOKEN_KEY);
     }
 
@@ -133,7 +135,7 @@ class Users_API {
 
     /** Checks if the local user is logged in */
     static IsUserLoggedIn() {
-        let token = this.GetToken();
+        let token = this.GetToken(false);
         return token !== null && token !== "undefined";
     }
 
