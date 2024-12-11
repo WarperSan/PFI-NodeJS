@@ -152,7 +152,7 @@ export default class AccountsController extends Controller {
         }
 
         userFound = this.repository.get(userFound.Id); // get data binded record
-        userFound.token = TokensManager.findUserToken(userFound.Id).Access_token;
+        userFound.token = TokensManager.create(userFound).Access_token;
         this.HttpContext.response.JSON(userFound);
         this.sendConfirmedEmail(userFound);
     }

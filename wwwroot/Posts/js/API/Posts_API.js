@@ -77,6 +77,7 @@ class Posts_API {
         return new Promise(resolve => {
             $.ajax({
                 url: create ? this.API_URL() : this.API_URL() + "/" + data.Id,
+                headers: { Authorization: `Bearer ${Users_API.GetToken()}` },
                 type: create ? "POST" : "PUT",
                 contentType: 'application/json',
                 data: JSON.stringify(data),

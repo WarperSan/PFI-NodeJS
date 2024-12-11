@@ -32,6 +32,8 @@
     display: flex;
     gap: 1em;
     font-size: 1.3em;
+    width: 6em;
+    justify-content: space-between;
 }
 
 .admin-icon-user {

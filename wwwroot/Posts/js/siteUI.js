@@ -91,7 +91,7 @@ function toogleShowKeywords() {
         $("#searchKeys").focus();
     } else {
         $("#searchKeys").hide();
-        showPosts(true);
+        //showPosts(true);
     }
 }
 
@@ -574,7 +574,7 @@ async function modifyUserFormSubmit(event) {
         return;
     }
 
-    if (user.IsVerified)
+    if (user.Verified)
     {
         hideUserForm();
         showPosts();
@@ -677,7 +677,7 @@ function renderAdminPanelUser(user, panel) {
         ? `<div class='fa-solid fa-lock ${ADMIN_PANEL_BLOCK_USER_CLASS.substring(1)}' title='${userBlockedTooltip}'></div>`
         : `<div class='fa-solid fa-unlock ${ADMIN_PANEL_BLOCK_USER_CLASS.substring(1)}' title="${userBlockedTooltip}"></div>`;
 
-    panel.append($(`
+    let userPanel = $(`
         <div class="adminPanelUser">
             <div class="adminPanelUserLeft">
                 <div class="adminPanelUserAvatar" style="background-image: url('${user.Avatar}');"></div>
@@ -690,19 +690,21 @@ function renderAdminPanelUser(user, panel) {
                 <div class="fa-solid fa-trash ${ADMIN_PANEL_DELETE_USER_CLASS.substring(1)}" style="color:red; cursor:pointer;" title="Supprimer le compte de ${userName}"></div>
             </div>
         </div>
-    `));
+    `);
 
-    panel.find(ADMIN_PANEL_PROMOTE_USER_CLASS).on("click", function () {
+    userPanel.find(ADMIN_PANEL_PROMOTE_USER_CLASS).on("click", function () {
         onAdminPanelPromote(user);
     });
 
-    panel.find(ADMIN_PANEL_BLOCK_USER_CLASS).on("click", function () {
+    userPanel.find(ADMIN_PANEL_BLOCK_USER_CLASS).on("click", function () {
         onAdminPanelBlock(user);
     });
 
-    panel.find(ADMIN_PANEL_DELETE_USER_CLASS).on("click", function () {
+    userPanel.find(ADMIN_PANEL_DELETE_USER_CLASS).on("click", function () {
         onAdminPanelDelete(user);
     });
+
+    panel.append(userPanel);
 }
 
 /** Called when the admin promotes a user */
@@ -778,6 +780,8 @@ async function onUserVerificationConfirm(id) {
 
     let user = await Users_API.Verify(id, code);
 
+    hideUserVerification();
+
     if (Users_API.error) {
 
         if (Users_API.currentHttpError === "Verification code does not matched.")
@@ -786,8 +790,6 @@ async function onUserVerificationConfirm(id) {
             showError("Un erreur est survenue!");
         return;
     }
-
-    hideUserVerification();
 
     onCompleteLogin(user.token, user);
 }
@@ -1048,6 +1050,7 @@ function postAuthorIcons(localUser, post, iconsPanel) {
 
 /** Sets the icons on a post for everyone */
 function postEveryoneIcons(localUser, post, iconsPanel) {
+
     let likes = post.Likes ?? [];
 
     let likeIcon = $(`
@@ -1056,7 +1059,7 @@ function postEveryoneIcons(localUser, post, iconsPanel) {
     iconsPanel.append(likeIcon);
 
     // If logged in
-    if (localUser !== null) {
+    if (localUser !== null && !localUser.isAdmin) {
         if (post.Likes.indexOf(localUser.Id) !== -1) {
             likeIcon.addClass('fa-solid');
             likeIcon.removeClass("fa-regular");
