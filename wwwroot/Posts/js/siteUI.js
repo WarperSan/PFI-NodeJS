@@ -543,6 +543,9 @@ function modifyUserCallback(form) {
     form.append($(`<div><button id="${USER_FORM_DELETE_BUTTON_ID.substring(1)}">Effacer le compte</button></div>`));
     form.find(USER_FORM_DELETE_BUTTON_ID).on("click", deleteLocalUser);
     form.find(USER_FORM_ID).on("submit", modifyUserFormSubmit);
+
+    $(SIGNUP_OLD_PASSWORD_ID).attr("CustomErrorMessage", "L'ancien mot de passe n'est pas votre mot de passe actuel.")
+    $(SIGNUP_EMAIL_ID).attr("CustomErrorMessage", "Ce courriel est déjà utilisé");
 }
 
 /** Called when the user modification form is submitted */
@@ -554,17 +557,15 @@ async function modifyUserFormSubmit(event) {
     delete newUser.EmailVerify;
     delete newUser.PasswordVerify;
 
-    await Users_API.Modify(newUser);
+    let user = await Users_API.Modify(newUser);
 
     if (Users_API.error) {
         if (Users_API.currentHttpError === "Wrong password.") {
             let oldPassword = $(SIGNUP_OLD_PASSWORD_ID);
-            oldPassword.attr("CustomErrorMessage", "L'ancien mot de passe n'est pas votre mot de passe actuel.")
             oldPassword[0].setCustomValidity("ERROR");
             oldPassword[0].reportValidity();
         } else if (Users_API.currentHttpError === "The email is being used by anoher user.") {
             let email = $(SIGNUP_EMAIL_ID);
-            email.attr("CustomErrorMessage", "Ce courriel est déjà utilisé");
             email[0].setCustomValidity("ERROR");
             email[0].reportValidity();
         }
@@ -573,8 +574,16 @@ async function modifyUserFormSubmit(event) {
         return;
     }
 
-    hideUserForm();
-    showPosts();
+    if (user.IsVerified)
+    {
+        hideUserForm();
+        showPosts();
+    }
+    else
+    {
+        await logout();
+        showLogin();
+    }
 }
 
 async function deleteLocalUser() {
@@ -1113,26 +1122,29 @@ async function updateDropDownMenu() {
 
     addDropdownDivider();
 
-    let selectClass = selectedCategory === "" ? "fa-check" : "fa-fw";
-    let allCategories = addDropdownItem("Toutes les catégories", "allCatCmd", `fa ${selectClass}`);
-    allCategories.on("click", async function () {
-        selectedCategory = "";
-        await showPosts(true);
-    });
-
-    addDropdownDivider();
-
-    categories.forEach(category => {
-
-        selectClass = selectedCategory === category ? "fa-check" : "fa-fw";
-        let cat = addDropdownItem(category, undefined, `fa ${selectClass}`);
-        cat.on("click", async function () {
-            selectedCategory = $(this).text().trim();
+    if (categories.length > 0)
+    {
+        let selectClass = selectedCategory === "" ? "fa-check" : "fa-fw";
+        let allCategories = addDropdownItem("Toutes les catégories", "allCatCmd", `fa ${selectClass}`);
+        allCategories.on("click", async function () {
+            selectedCategory = "";
             await showPosts(true);
         });
-    });
 
-    addDropdownDivider();
+        addDropdownDivider();
+
+        categories.forEach(category => {
+
+            selectClass = selectedCategory === category ? "fa-check" : "fa-fw";
+            let cat = addDropdownItem(category, undefined, `fa ${selectClass}`);
+            cat.on("click", async function () {
+                selectedCategory = $(this).text().trim();
+                await showPosts(true);
+            });
+        });
+
+        addDropdownDivider();
+    }
 
     let about = addDropdownItem("À propos...", "aboutCmd", "fa fa-info-circle");
     about.on("click", showAbout);
