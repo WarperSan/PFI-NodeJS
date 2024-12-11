@@ -557,13 +557,18 @@ async function modifyUserFormSubmit(event) {
     await Users_API.Modify(newUser);
 
     if (Users_API.error) {
-
         if (Users_API.currentHttpError === "Wrong password.") {
             let oldPassword = $(SIGNUP_OLD_PASSWORD_ID);
             oldPassword.attr("CustomErrorMessage", "L'ancien mot de passe n'est pas votre mot de passe actuel.")
             oldPassword[0].setCustomValidity("ERROR");
             oldPassword[0].reportValidity();
-        } else
+        } else if (Users_API.currentHttpError === "The email is being used by anoher user.") {
+            let email = $(SIGNUP_EMAIL_ID);
+            email.attr("CustomErrorMessage", "Ce courriel est déjà utilisé");
+            email[0].setCustomValidity("ERROR");
+            email[0].reportValidity();
+        }
+        else
             showError("Une erreur est survenue!");
         return;
     }

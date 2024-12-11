@@ -23,7 +23,5 @@ RouteRegister.add('GET', 'accounts', 'remove'); // Removes a user in the system
 RouteRegister.add('POST', 'accounts', 'promote'); // Promotes a user in the system
 RouteRegister.add('POST', 'accounts', 'block'); // Blocks a user in the system
 
-RouteRegister.add('GET', 'accounts', 'conflict');
-
 let server = new APIServer();
 server.start();

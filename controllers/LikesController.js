@@ -2,10 +2,11 @@ import Repository from '../models/repository.js';
 import Controller from './Controller.js';
 import Like from "../models/like.js";
 import UsersController from "./UsersController.js";
+import AccessControl from "../accessControl.js";
 
 export default class LikesController extends Controller {
     constructor(HttpContext) {
-        super(HttpContext, new Repository(new Like()));
+        super(HttpContext, new Repository(new Like()), AccessControl.noAPI());
     }
 
     getLikes(idPost) {

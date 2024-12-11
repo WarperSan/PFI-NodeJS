@@ -21,8 +21,7 @@ export default class AccountsController extends Controller {
 
         if (id === '') {
 
-            if (!AccessControl.granted(this.HttpContext.authorizations, AccessControl.admin()))
-            {
+            if (!AccessControl.granted(this.HttpContext.authorizations, AccessControl.admin())) {
                 this.HttpContext.response.unAuthorized("Unauthorized access");
                 return;
             }
@@ -33,11 +32,8 @@ export default class AccountsController extends Controller {
                 users = users.filter(u => u.Id !== this.HttpContext.user.Id);
 
             this.HttpContext.response.JSON(users, this.repository.ETag, false, AccessControl.admin());
-        }
-        else
-        {
-            if (!AccessControl.readGranted(this.HttpContext.authorizations, AccessControl.admin()))
-            {
+        } else {
+            if (!AccessControl.readGranted(this.HttpContext.authorizations, AccessControl.admin())) {
                 this.HttpContext.response.unAuthorized("Unauthorized access");
                 return;
             }
@@ -77,8 +73,7 @@ export default class AccountsController extends Controller {
 
         user = this.repository.get(user.Id);
 
-        if (user.isBlocked)
-        {
+        if (user.isBlocked) {
             this.HttpContext.response.unAuthorized("This user is blocked.");
             return;
         }
@@ -162,18 +157,8 @@ export default class AccountsController extends Controller {
         this.sendConfirmedEmail(userFound);
     }
 
-    //GET : /accounts/conflict?Id=...&Email=.....
-    conflict() {
-        if (this.repository != null) {
-            let id = this.HttpContext.path.params.Id;
-            let email = this.HttpContext.path.params.Email;
-            if (id && email) {
-                let prototype = {Id: id, Email: email};
-                this.HttpContext.response.JSON(this.repository.checkConflict(prototype));
-            } else
-                this.HttpContext.response.JSON(false);
-        } else
-            this.HttpContext.response.JSON(false);
+    conflict(id, email) {
+        return this.repository.checkConflict({Id: id, Email: email});
     }
 
     // GET: /accounts/exists?Email=...
@@ -245,28 +230,24 @@ export default class AccountsController extends Controller {
     // POST: /accounts/promote [{ "Id": 0 }]
     promote(data) {
 
-        if (data.Id === null)
-        {
+        if (data.Id === null) {
             this.HttpContext.response.badRequest("No id was provided.");
             return;
         }
 
-        if (this.repository === null)
-        {
+        if (this.repository === null) {
             this.HttpContext.response.notImplemented();
             return;
         }
 
         let foundUser = this.repository.findByField("Id", data.Id);
 
-        if (foundUser === null)
-        {
+        if (foundUser === null) {
             this.HttpContext.response.notFound("Could not find the requested user.");
             return;
         }
 
-        if (foundUser.Authorizations.readAccess === -1)
-        {
+        if (foundUser.Authorizations.readAccess === -1) {
             this.HttpContext.response.JSON(foundUser);
             return;
         }
@@ -295,22 +276,19 @@ export default class AccountsController extends Controller {
     // POST: /accounts/block [{ "Id": 0 }]
     block(data) {
 
-        if (data.Id === null)
-        {
+        if (data.Id === null) {
             this.HttpContext.response.badRequest("No id was provided.");
             return;
         }
 
-        if (this.repository === null)
-        {
+        if (this.repository === null) {
             this.HttpContext.response.notImplemented();
             return;
         }
 
         let foundUser = this.repository.findByField("Id", data.Id);
 
-        if (foundUser === null)
-        {
+        if (foundUser === null) {
             this.HttpContext.response.notFound("Could not find the requested user.");
             return;
         }
@@ -322,8 +300,7 @@ export default class AccountsController extends Controller {
 
         this.repository.update(data.Id, foundUser, false);
 
-        if (!this.repository.model.state.isValid)
-        {
+        if (!this.repository.model.state.isValid) {
             this.HttpContext.response.badRequest(this.repository.model.state.errors);
             return;
         }
@@ -367,11 +344,17 @@ export default class AccountsController extends Controller {
         if (user.Password == '')
             user.Password = foundedUser.Password;
 
-        if (user.Email != foundedUser.Email) {
+        user.VerifyCode = foundedUser.VerifyCode;
+
+        if (this.conflict(user.Id, user.Email)) {
+            this.HttpContext.response.conflict("The email is being used by anoher user.");
+            return;
+        }
+
+        if (user.Email !== foundedUser.Email) {
             user.VerifyCode = utilities.makeVerifyCode(6);
             this.sendVerificationEmail(user);
-        } else
-            user.VerifyCode = foundedUser.VerifyCode;
+        }
 
         this.repository.update(user.Id, user);
         new PostModelsController(null).repository.newETag(); // Make post repository dirty

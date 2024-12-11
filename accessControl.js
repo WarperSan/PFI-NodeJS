@@ -24,6 +24,10 @@ export default class AccessControl {
         return {readAccess: 3, writeAccess: 3};
     }
 
+    static noAPI() {
+        return {readAccess: Number.MAX_VALUE, writeAccess: Number.MAX_VALUE};
+    }
+
     static granted(authorizations, requiredAccess) {
         if (requiredAccess) {
             if (requiredAccess.readAccess == 0 && requiredAccess.writeAccess == 0) return true;
